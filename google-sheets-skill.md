@@ -1,11 +1,10 @@
----
+
 name: google-sheets
 description: Read and modify the user's Google Sheets with cell-level precision — read/write ranges, append rows, create spreadsheets, add/delete/rename tabs, insert/delete rows & columns, apply formatting (bold, color, background, alignment, number formats), write formulas, and share. Uses scoped access via a Google service account: only sheets explicitly shared with the robot email are reachable. Use whenever the user wants to read from, write to, or manipulate a Google Sheet / spreadsheet.
 user-invocable: true
 allowed-tools:
   - Read
   - Bash
----
 
 # Google Sheets
 
