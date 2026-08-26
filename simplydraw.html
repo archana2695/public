@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brainstorms</title>
+<link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2d241f; --body:#6d6259; --accent:#b46a3c; --line:#e6ded6;
+    --paper:#fffdfb; --canvas:#f6f1ec; --rail:#efe7df; --warn:#b4453c;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font-family:'Mulish',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    color:var(--body);background:#fff;overflow:hidden}
+  button{font-family:inherit}
+
+  /* the canvas fills the window; everything else floats on top of it */
+  main{position:fixed;inset:0}
+
+  /* --- floating menu button, top left --- */
+  #menubtn{
+    position:absolute;top:12px;left:12px;z-index:40;
+    width:36px;height:36px;border:1px solid #e4e1e8;background:rgba(255,255,255,.97);
+    border-radius:11px;box-shadow:0 3px 14px rgba(45,36,31,.10);cursor:pointer;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;padding:0;
+  }
+  #menubtn:hover{background:#f7f6f9}
+  #menubtn i{display:block;width:15px;height:1.6px;background:#3d3846;border-radius:2px}
+
+  /* --- floating title + current canvas --- */
+  #titlebar{
+    position:absolute;top:12px;left:58px;z-index:40;height:36px;display:flex;align-items:center;gap:9px;
+    padding:0 13px;background:rgba(255,255,255,.97);border:1px solid #e4e1e8;border-radius:11px;
+    box-shadow:0 3px 14px rgba(45,36,31,.10);max-width:min(46vw,420px);
+  }
+  #apptitle{
+    font-size:13.5px;font-weight:800;color:var(--ink);letter-spacing:-.01em;white-space:nowrap;
+    cursor:text;border-radius:6px;padding:2px 4px;overflow:hidden;text-overflow:ellipsis;
+  }
+  #apptitle:hover{background:#f1f0f4}
+  #titlebar .sep{width:1px;height:16px;background:#e4e1e8;flex:none}
+  #crumb{font-size:12.5px;color:#8b8698;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .titleedit{
+    font-family:inherit;font-size:13.5px;font-weight:800;color:var(--ink);border:1px solid var(--accent);
+    border-radius:6px;padding:1px 5px;outline:none;background:#fff;width:190px;
+  }
+
+  /* --- floating canvases panel --- */
+  nav{
+    position:absolute;top:60px;left:12px;z-index:35;width:232px;
+    background:rgba(255,255,255,.97);border:1px solid #e4e1e8;border-radius:12px;
+    box-shadow:0 3px 16px rgba(45,36,31,.12);padding:8px 8px 10px;
+    max-height:calc(100vh - 150px);overflow-y:auto;
+  }
+  body.collapsed nav{display:none}
+
+  /* section headers */
+  .sechead{
+    display:flex;align-items:center;gap:4px;padding:6px 6px 6px 2px;border-radius:7px;cursor:grab;
+    font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#a5a1ae;
+    margin-top:3px;
+  }
+  .sechead:hover{background:#f3f2f6}
+  .sechead:active{cursor:grabbing}
+  .twist{border:none;background:none;cursor:pointer;color:#a5a1ae;font-size:9px;padding:2px 3px}
+  .secname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text}
+  .secbtn{
+    border:none;background:none;cursor:pointer;color:#b3aeba;font-size:12px;padding:1px 4px;
+    border-radius:5px;opacity:0;
+  }
+  .sechead:hover .secbtn{opacity:1}
+  .secbtn:hover{background:#e9e7ed;color:#3d3846}
+  .secempty{font-size:11px;color:#b3aeba;font-style:italic;padding:4px 12px 6px 20px;border-radius:7px}
+
+  /* canvas rows */
+  nav a.page{
+    display:flex;align-items:center;gap:8px;padding:6px 8px 6px 20px;border-radius:7px;
+    font-size:13px;font-weight:600;color:#3d3846;text-decoration:none;cursor:pointer;margin-bottom:1px;
+  }
+  nav a.page:hover{background:#f3f2f6}
+  nav a.page.on{background:#e0dfff;color:#4b47b8}
+  nav a.page .pg{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text}
+  .pgx{border:none;background:none;color:inherit;opacity:0;cursor:pointer;font-size:11px;padding:1px 3px;border-radius:5px}
+  nav a.page:hover .pgx{opacity:.5}
+  .pgx:hover{opacity:1 !important}
+  nav a.newsec{color:var(--accent);font-weight:700;padding-left:8px;margin-top:8px}
+  .railedit{
+    font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);border:1px solid var(--accent);
+    border-radius:5px;padding:1px 5px;outline:none;background:#fff;width:100%;min-width:0;
+  }
+
+  /* drop indicators */
+  .droptop{box-shadow:inset 0 2px 0 var(--accent)}
+  .dropbot{box-shadow:inset 0 -2px 0 var(--accent)}
+  .dropinto{background:#e0dfff !important;box-shadow:inset 0 0 0 1.5px var(--accent)}
+
+  /* confirm popover + toast */
+  .pop{
+    position:fixed;z-index:500;background:#fff;border:1px solid #e4e1e8;border-radius:10px;
+    box-shadow:0 6px 24px rgba(45,36,31,.16);padding:12px 13px 11px;width:236px;
+    animation:popin .12s ease-out;
+  }
+  @keyframes popin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .pop p{margin:0 0 10px;font-size:12.5px;line-height:1.45;color:var(--body)}
+  .pop p b{color:var(--ink);font-weight:700}
+  .pop .row{display:flex;gap:6px;justify-content:flex-end}
+  .pop button{
+    font-size:12px;font-weight:700;padding:5px 11px;border-radius:7px;cursor:pointer;border:1px solid #e4e1e8;
+    background:#fff;color:var(--body);
+  }
+  .pop button:hover{background:#f7f6f9}
+  .pop button.danger{background:var(--warn);border-color:var(--warn);color:#fff}
+  .pop button.danger:hover{filter:brightness(1.06)}
+  .pop:after{
+    content:'';position:absolute;width:9px;height:9px;background:#fff;
+    border-right:1px solid #e4e1e8;border-bottom:1px solid #e4e1e8;transform:rotate(45deg);
+  }
+  .pop.below:after{top:-5.5px;transform:rotate(225deg)}
+  .pop.above:after{bottom:-5.5px}
+
+  .toast{
+    position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:500;
+    background:var(--ink);color:#fff;font-size:12.5px;font-weight:600;padding:9px 15px;border-radius:9px;
+    box-shadow:0 4px 18px rgba(45,36,31,.22);animation:popin .12s ease-out;
+  }
+
+  /* ---------- brainstorm (excalidraw-style) canvas ---------- */
+  #v-brainstorm{position:absolute;inset:0}
+  #bwrap{position:absolute;inset:0;background:#fff;overflow:hidden}
+  #bcanvas{position:absolute;inset:0;display:block;touch-action:none;cursor:crosshair}
+  #bwrap.tool-select #bcanvas{cursor:default}
+  #bwrap.tool-hand #bcanvas{cursor:grab}
+  #bwrap.panning #bcanvas{cursor:grabbing}
+  #bwrap.tool-eraser #bcanvas{cursor:cell}
+
+  .island{
+    position:absolute;background:rgba(255,255,255,.97);border:1px solid #e4e1e8;border-radius:12px;
+    box-shadow:0 3px 14px rgba(45,36,31,.10);z-index:20;
+  }
+  /* tool palette, centred at the top like excalidraw */
+  #tools{top:12px;left:50%;transform:translateX(-50%);display:flex;gap:2px;padding:5px}
+  #tools button{
+    width:34px;height:34px;border:none;background:none;border-radius:9px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:#3d3846;position:relative;
+  }
+  #tools button:hover{background:#f1f0f4}
+  #tools button.on{background:#e0dfff;color:#4b47b8}
+  #tools button i{position:absolute;bottom:1px;right:3px;font-size:8px;font-style:normal;color:#a5a1ae}
+  #tools button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;
+    stroke-linecap:round;stroke-linejoin:round}
+  #tools .divider{width:1px;background:#e9e7ed;margin:5px 4px}
+
+  /* left style panel */
+  #styles{top:66px;left:12px;width:206px;padding:12px;max-height:calc(100% - 90px);overflow-y:auto;display:none}
+  #styles.on{display:block}
+  #styles h4{font-size:11px;font-weight:700;color:#3d3846;margin:0 0 6px}
+  #styles section{margin-bottom:13px}
+  .swatches{display:flex;gap:5px;align-items:center}
+  .sw{width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.1);cursor:pointer;padding:0}
+  .sw.on{outline:2px solid #4b47b8;outline-offset:1px}
+  .sw.clear{background:
+    linear-gradient(45deg,transparent 45%,#d64545 45%,#d64545 55%,transparent 55%),#fff}
+  .opts{display:flex;gap:4px}
+  .opt{
+    flex:1;height:28px;border:1px solid #e4e1e8;background:#fff;border-radius:7px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:#3d3846;font-size:11px;font-weight:700;padding:0;
+  }
+  .opt:hover{background:#f7f6f9}
+  .opt.on{background:#e0dfff;border-color:#c9c7f5;color:#4b47b8}
+  .opt svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
+  #styles input[type=range]{width:100%;accent-color:#4b47b8}
+
+  /* zoom + undo island, bottom left */
+  #zoombar{bottom:14px;left:12px;display:flex;gap:4px;padding:4px;align-items:center}
+  #zoombar button{
+    border:none;background:none;cursor:pointer;color:#3d3846;font-size:14px;width:28px;height:26px;border-radius:7px;
+  }
+  #zoombar button:hover{background:#f1f0f4}
+  #zoombar span{font-size:11px;font-weight:700;color:#3d3846;min-width:42px;text-align:center;cursor:pointer}
+
+  /* page bar, bottom right */
+  #pagebar{bottom:14px;right:14px;display:flex;gap:6px;padding:6px 8px;align-items:center;font-size:12px}
+  #pagebar b{color:#3d3846;font-weight:700;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #pagebar button{
+    border:1px solid #e4e1e8;background:#fff;border-radius:7px;cursor:pointer;font-size:11px;
+    padding:4px 8px;color:#3d3846;
+  }
+  #pagebar button:hover{background:#f7f6f9}
+
+  /* in-place text editor */
+  #btext{
+    position:absolute;z-index:30;border:none;outline:none;background:transparent;resize:none;overflow:hidden;
+    white-space:pre;display:none;padding:0;margin:0;line-height:1.25;
+  }
+
+  /* nav page list */
+  nav a.page{font-size:13px;font-weight:600;padding:7px 11px;gap:8px}
+  nav a.page .pg{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  nav a.newpage{color:var(--accent);font-weight:700}
+  .framename{
+    position:fixed;z-index:40;font:700 13px 'Mulish',sans-serif;color:#3d3846;
+    border:1px solid #4b47b8;border-radius:6px;padding:2px 6px;outline:none;background:#fff;width:190px;
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <!-- ================= BRAINSTORM ================= -->
+    <div id="bwrap" class="tool-select">
+      <canvas id="bcanvas"></canvas>
+      <textarea id="btext" spellcheck="false"></textarea>
+
+      <div class="island" id="tools">
+        <button data-tool="hand" title="Hand (panning tool) — H"><svg viewBox="0 0 24 24"><path d="M6 11V6.5a1.5 1.5 0 013 0V11m0-.5v-5a1.5 1.5 0 013 0V11m0-.5v-4a1.5 1.5 0 013 0V12m0-3a1.5 1.5 0 013 0v5a6 6 0 01-6 6h-2a6 6 0 01-6-6v-2a1.5 1.5 0 013 0"/></svg><i>H</i></button>
+        <button data-tool="select" title="Selection — V"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z"/></svg><i>V</i></button>
+        <div class="divider"></div>
+        <button data-tool="rect" title="Rectangle — R"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/></svg><i>R</i></button>
+        <button data-tool="diamond" title="Diamond — D"><svg viewBox="0 0 24 24"><path d="M12 3l9 9-9 9-9-9z"/></svg><i>D</i></button>
+        <button data-tool="ellipse" title="Ellipse — O"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="7.5"/></svg><i>O</i></button>
+        <button data-tool="arrow" title="Arrow — A"><svg viewBox="0 0 24 24"><path d="M4 18L20 6M20 6h-6M20 6v6"/></svg><i>A</i></button>
+        <button data-tool="line" title="Line — L"><svg viewBox="0 0 24 24"><path d="M4 18L20 6"/></svg><i>L</i></button>
+        <button data-tool="draw" title="Draw — P"><svg viewBox="0 0 24 24"><path d="M3 21s1-4 3-6 8-8 8-8l3 3s-6 6-8 8-6 3-6 3z"/><path d="M14 6l3-3 3 3-3 3"/></svg><i>P</i></button>
+        <button data-tool="text" title="Text — T"><svg viewBox="0 0 24 24"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg><i>T</i></button>
+        <button data-tool="frame" title="Frame — F"><svg viewBox="0 0 24 24"><path d="M7 3v18M17 3v18M3 7h18M3 17h18"/></svg><i>F</i></button>
+        <div class="divider"></div>
+        <button data-tool="eraser" title="Eraser — E"><svg viewBox="0 0 24 24"><path d="M4 16l8-8 6 6-4 4H7zM3 21h18"/></svg><i>E</i></button>
+      </div>
+
+      <div class="island" id="styles"></div>
+
+      <div class="island" id="zoombar">
+        <button id="bundo" title="Undo — ⌘Z">↺</button>
+        <button id="bredo" title="Redo — ⇧⌘Z">↻</button>
+        <button id="bzout" title="Zoom out">−</button>
+        <span id="bzoom" title="Reset zoom to 100%">100%</span>
+        <button id="bzin" title="Zoom in">+</button>
+        <button id="bzfit" title="Zoom to fit">⤢</button>
+      </div>
+
+      <div class="island" id="pagebar">
+        <b id="bpagename"></b>
+        <button id="brename">Rename</button>
+        <button id="bexport">Export PNG</button>
+        <button id="bdelete">Delete</button>
+      </div>
+    </div>
+</main>
+
+<button id="menubtn" title="Canvases"><i></i><i></i><i></i></button>
+<div id="titlebar">
+  <span id="apptitle" title="Double-click to rename">Brainstorms</span>
+  <span class="sep"></span>
+  <span id="crumb"></span>
+</div>
+<nav id="rail"></nav>
+
+<script>
+/* =========================================================
+   Brainstorms — an excalidraw-style sketch canvas.
+   Multiple pages, infinite scroll/zoom, hand-drawn rendering.
+   ========================================================= */
+const BKEY = 'excalidraw-lite-v1';
+const BSTYLE = 'excalidraw-lite-style';
+
+const STROKES = ['#1e1e1e','#e03131','#2f9e44','#1971c2','#f08c00'];
+const FILLS   = ['transparent','#ffc9c9','#b2f2bb','#a5d8ff','#ffec99'];
+
+let B = JSON.parse(localStorage.getItem(BKEY) || 'null') || {
+  title: 'Brainstorms',
+  sections: [{id: 's1', name: 'Canvases', open: true}],
+  pages: [{id: 'p1', name: 'Canvas 1', sectionId: 's1', elements: [], scrollX: 0, scrollY: 0, zoom: 1}],
+  active: 'p1',
+};
+let bstyle = JSON.parse(localStorage.getItem(BSTYLE) || 'null') || {
+  stroke: '#1e1e1e', bg: 'transparent', fillStyle: 'hachure', strokeWidth: 2,
+  strokeStyle: 'solid', sloppiness: 1, edges: 'sharp', opacity: 100, fontSize: 20,
+};
+const saveB = () => localStorage.setItem(BKEY, JSON.stringify(B));
+const saveStyle = () => localStorage.setItem(BSTYLE, JSON.stringify(bstyle));
+
+const page = () => B.pages.find(p => p.id === B.active) || B.pages[0];
+const els2 = () => page().elements;
+
+const wrap = document.getElementById('bwrap');
+const cv = document.getElementById('bcanvas');
+let ctx = cv.getContext('2d');
+const tarea = document.getElementById('btext');
+
+let tool = 'select';
+let selected = new Set();
+let editingId = null;
+let hist = [], future = [];
+
+/* ---------- geometry helpers ---------- */
+const toScene = (sx, sy) => { const p = page();
+  return {x: sx / p.zoom - p.scrollX, y: sy / p.zoom - p.scrollY}; };
+/* canvas-relative point for a pointer event (offsetX is unreliable on a scaled canvas) */
+const evPt = e => { const r = cv.getBoundingClientRect();
+  return toScene(e.clientX - r.left, e.clientY - r.top); };
+function bounds(e){
+  if (e.type === 'draw' || e.type === 'line' || e.type === 'arrow') {
+    const xs = e.points.map(p => e.x + p[0]), ys = e.points.map(p => e.y + p[1]);
+    return {x1: Math.min(...xs), y1: Math.min(...ys), x2: Math.max(...xs), y2: Math.max(...ys)};
+  }
+  return {x1: Math.min(e.x, e.x + e.w), y1: Math.min(e.y, e.y + e.h),
+          x2: Math.max(e.x, e.x + e.w), y2: Math.max(e.y, e.y + e.h)};
+}
+/* rotate (x,y) about (cx,cy) */
+const rot = (x, y, cx, cy, a) => {
+  if (!a) return {x, y};
+  const c = Math.cos(a), s2 = Math.sin(a), dx = x - cx, dy = y - cy;
+  return {x: cx + dx * c - dy * s2, y: cy + dx * s2 + dy * c};
+};
+const centre = e => { const b = bounds(e);
+  return {x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2}; };
+/* world-space axis-aligned box, accounting for the element's own rotation */
+function abox(e){
+  const b = bounds(e);
+  if (!e.angle) return b;
+  const c = centre(e);
+  const pts = [[b.x1,b.y1],[b.x2,b.y1],[b.x2,b.y2],[b.x1,b.y2]]
+    .map(([x,y]) => rot(x, y, c.x, c.y, e.angle));
+  return {x1: Math.min(...pts.map(p=>p.x)), y1: Math.min(...pts.map(p=>p.y)),
+          x2: Math.max(...pts.map(p=>p.x)), y2: Math.max(...pts.map(p=>p.y))};
+}
+/* a click, expressed in the element's own unrotated frame */
+const localPt = (e, x, y) => { const c = centre(e); return rot(x, y, c.x, c.y, -(e.angle || 0)); };
+
+function selBounds(){
+  const list = [...selected].map(id => els2().find(e => e.id === id)).filter(Boolean);
+  if (!list.length) return null;
+  const bs = list.map(abox);
+  return {x1: Math.min(...bs.map(b => b.x1)), y1: Math.min(...bs.map(b => b.y1)),
+          x2: Math.max(...bs.map(b => b.x2)), y2: Math.max(...bs.map(b => b.y2))};
+}
+function inside(e, x, y, pad){
+  const b = bounds(e), l = localPt(e, x, y);
+  return l.x >= b.x1 - pad && l.x <= b.x2 + pad && l.y >= b.y1 - pad && l.y <= b.y2 + pad;
+}
+function hitTest(x, y){
+  const pad = 8 / page().zoom;
+  for (let i = els2().length - 1; i >= 0; i--) {
+    const e = els2()[i];
+    if (e.type === 'frame') continue;              // frames are grabbed by their label
+    if (inside(e, x, y, pad)) return e;
+  }
+  return null;
+}
+
+/* ---------- arrow binding ----------
+   A bound arrow stores {id, gap} per end instead of a frozen coordinate; the
+   drawn endpoint is re-solved as the crossing of the shape's outline with the
+   line to whatever the other end aims at. ---------------------------------- */
+const BINDABLE = ['rect','ellipse','diamond'];
+const BIND_PAD = 14;
+let hoverBind = null;
+
+function bindableAt(x, y, skipId){
+  for (let i = els2().length - 1; i >= 0; i--) {
+    const e = els2()[i];
+    if (!BINDABLE.includes(e.type) || e.id === skipId) continue;
+    if (inside(e, x, y, BIND_PAD)) return e;
+  }
+  return null;
+}
+const centreOf = el => { const b = bounds(el);
+  return {x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2}; };
+
+/* where a line aimed from (px,py) at `shape` should stop: on the outline + gap */
+function edgePoint(shape, px, py, gap){
+  const b = bounds(shape);
+  const cx = (b.x1 + b.x2) / 2, cy = (b.y1 + b.y2) / 2;
+  if (shape.angle) {                       // solve in the shape's own frame, then rotate back
+    const l = rot(px, py, cx, cy, -shape.angle);
+    const hit = edgePoint({...shape, angle: 0}, l.x, l.y, gap);
+    return rot(hit.x, hit.y, cx, cy, shape.angle);
+  }
+  const rx = Math.max(1, (b.x2 - b.x1) / 2), ry = Math.max(1, (b.y2 - b.y1) / 2);
+  const dx = px - cx, dy = py - cy;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.001) return {x: cx, y: cy};
+  const ax = Math.abs(dx) || 1e-6, ay = Math.abs(dy) || 1e-6;
+  let t;
+  if (shape.type === 'ellipse')      t = 1 / Math.hypot(dx / rx, dy / ry);
+  else if (shape.type === 'diamond') t = 1 / (ax / rx + ay / ry);
+  else                               t = Math.min(rx / ax, ry / ay);
+  const g = (gap ?? 4) / len;
+  return {x: cx + dx * (t + g), y: cy + dy * (t + g)};
+}
+
+/* re-solve both endpoints of one arrow */
+function applyBinding(a){
+  if (a.type !== 'arrow') return;
+  const sShape = a.startBinding && els2().find(e => e.id === a.startBinding.id);
+  const eShape = a.endBinding && els2().find(e => e.id === a.endBinding.id);
+  if (a.startBinding && !sShape) a.startBinding = null;   // shape was deleted
+  if (a.endBinding && !eShape) a.endBinding = null;
+  if (!sShape && !eShape) return;
+  const pts = a.points.map(p => [a.x + p[0], a.y + p[1]]);
+  let A = {x: pts[0][0], y: pts[0][1]};
+  let Z = {x: pts[pts.length - 1][0], y: pts[pts.length - 1][1]};
+  const aimA = sShape ? centreOf(sShape) : A;
+  const aimZ = eShape ? centreOf(eShape) : Z;
+  if (sShape) A = edgePoint(sShape, aimZ.x, aimZ.y, a.startBinding.gap);
+  if (eShape) Z = edgePoint(eShape, aimA.x, aimA.y, a.endBinding.gap);
+  a.x = A.x; a.y = A.y;
+  a.points = [[0, 0], [Z.x - A.x, Z.y - A.y]];
+}
+
+/* (re)decide what an arrow's ends are attached to, based on where they sit */
+function bindArrowEnds(a){
+  if (a.type !== 'arrow' || !a.points || a.points.length < 2) return;
+  const pts = a.points.map(p => [a.x + p[0], a.y + p[1]]);
+  const [sx, sy] = pts[0], [zx, zy] = pts[pts.length - 1];
+  const gap = 4 + a.strokeWidth;
+  const s = bindableAt(sx, sy, a.id);
+  const z = bindableAt(zx, zy, a.id);
+  a.startBinding = s ? {id: s.id, gap} : null;
+  a.endBinding = (z && z !== s) ? {id: z.id, gap} : null;
+  applyBinding(a);
+}
+
+/* refresh every arrow attached to any of `ids` (or all of them when omitted) */
+function refreshBindings(ids){
+  els2().forEach(a => {
+    if (a.type !== 'arrow') return;
+    if (!ids || ids.has(a.startBinding?.id) || ids.has(a.endBinding?.id)) applyBinding(a);
+  });
+}
+
+/* ---------- seeded jitter, so a shape looks the same every repaint ---------- */
+function rng(seed){ let s = seed >>> 0;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+
+/* one wobbly stroke from a to b */
+function sketchLine(r, x1, y1, x2, y2, rough){
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  const off = Math.min(len / 7, 9) * rough;
+  const j = () => (r() - 0.5) * off;
+  ctx.moveTo(x1 + j(), y1 + j());
+  ctx.quadraticCurveTo((x1 + x2) / 2 + j() * 1.6, (y1 + y2) / 2 + j() * 1.6, x2 + j(), y2 + j());
+}
+function strokePath(e, drawFn){
+  const rough = [0, 1, 2.4][e.sloppiness] ?? 1;
+  const passes = rough === 0 ? 1 : 2;
+  for (let p = 0; p < passes; p++) {
+    const r = rng(e.seed + p * 977);
+    ctx.beginPath();
+    drawFn(r, rough);
+    ctx.stroke();
+  }
+}
+function shapePath(e, r, rough){                 // outline used for both stroke and clip
+  const b = bounds(e);
+  const {x1, y1, x2, y2} = b;
+  if (e.type === 'rect') {
+    if (e.edges === 'round') {
+      const rad = Math.min(28, Math.abs(x2 - x1) / 4, Math.abs(y2 - y1) / 4);
+      ctx.moveTo(x1 + rad, y1);
+      ctx.lineTo(x2 - rad, y1); ctx.quadraticCurveTo(x2, y1, x2, y1 + rad);
+      ctx.lineTo(x2, y2 - rad); ctx.quadraticCurveTo(x2, y2, x2 - rad, y2);
+      ctx.lineTo(x1 + rad, y2); ctx.quadraticCurveTo(x1, y2, x1, y2 - rad);
+      ctx.lineTo(x1, y1 + rad); ctx.quadraticCurveTo(x1, y1, x1 + rad, y1);
+    } else {
+      sketchLine(r, x1, y1, x2, y1, rough); sketchLine(r, x2, y1, x2, y2, rough);
+      sketchLine(r, x2, y2, x1, y2, rough); sketchLine(r, x1, y2, x1, y1, rough);
+    }
+  } else if (e.type === 'diamond') {
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+    sketchLine(r, mx, y1, x2, my, rough); sketchLine(r, x2, my, mx, y2, rough);
+    sketchLine(r, mx, y2, x1, my, rough); sketchLine(r, x1, my, mx, y1, rough);
+  } else if (e.type === 'ellipse') {
+    const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2, rx = (x2 - x1) / 2, ry = (y2 - y1) / 2;
+    const wob = Math.min(rx, ry) * 0.09 * rough;
+    const N = 26;
+    for (let i = 0; i <= N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      const px = cx + Math.cos(a) * (rx + (r() - 0.5) * wob);
+      const py = cy + Math.sin(a) * (ry + (r() - 0.5) * wob);
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    }
+    ctx.closePath();
+  }
+}
+function fillShape(e){
+  if (e.bg === 'transparent') return;
+  const b = bounds(e);
+  ctx.save();
+  ctx.beginPath();
+  shapePath(e, rng(e.seed + 5), 0);              // clean path for clipping
+  ctx.closePath();
+  ctx.clip();
+  if (e.fillStyle === 'solid') {
+    ctx.fillStyle = e.bg;
+    ctx.fillRect(b.x1, b.y1, b.x2 - b.x1, b.y2 - b.y1);
+  } else {
+    ctx.strokeStyle = e.bg;
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([]);
+    const gap = 8, w = b.x2 - b.x1, h = b.y2 - b.y1;
+    ctx.beginPath();
+    for (let d = -h; d < w + h; d += gap) {      // 45° hachure
+      ctx.moveTo(b.x1 + d, b.y1); ctx.lineTo(b.x1 + d + h, b.y2);
+    }
+    if (e.fillStyle === 'cross') {
+      for (let d = -h; d < w + h; d += gap) { ctx.moveTo(b.x1 + d, b.y2); ctx.lineTo(b.x1 + d + h, b.y1); }
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawElement(e){
+  ctx.save();
+  if (e.frameId) {                          // contents are clipped to their frame
+    const f = els2().find(x => x.id === e.frameId);
+    if (f) { const fb = bounds(f);
+      ctx.beginPath(); ctx.rect(fb.x1, fb.y1, fb.x2 - fb.x1, fb.y2 - fb.y1); ctx.clip(); }
+  }
+  if (e.angle) { const c = centre(e);
+    ctx.translate(c.x, c.y); ctx.rotate(e.angle); ctx.translate(-c.x, -c.y); }
+  ctx.globalAlpha = (e.opacity ?? 100) / 100;
+  ctx.strokeStyle = e.stroke;
+  ctx.lineWidth = e.strokeWidth;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.setLineDash(e.strokeStyle === 'dashed' ? [e.strokeWidth * 4, e.strokeWidth * 4]
+               : e.strokeStyle === 'dotted' ? [0.5, e.strokeWidth * 3] : []);
+
+  if (e.type === 'frame') {
+    const b = bounds(e);
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#bdb9c9'; ctx.lineWidth = 1.5 / page().zoom * page().zoom;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(b.x1, b.y1, b.x2 - b.x1, b.y2 - b.y1);
+    ctx.strokeRect(b.x1, b.y1, b.x2 - b.x1, b.y2 - b.y1);
+    ctx.fillStyle = '#8b8698';
+    ctx.font = "600 13px 'Mulish',sans-serif";
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(e.name || 'Frame', b.x1 + 2, b.y1 - 5);
+  } else if (e.type === 'text') {
+    ctx.setLineDash([]);
+    ctx.fillStyle = e.stroke;
+    ctx.font = e.fontSize + "px 'Bradley Hand','Comic Sans MS','Segoe Print',cursive";
+    ctx.textBaseline = 'top';
+    e.text.split('\n').forEach((ln, i) => ctx.fillText(ln, e.x, e.y + i * e.fontSize * 1.25));
+  } else if (e.type === 'draw') {
+    ctx.beginPath();
+    e.points.forEach((p, i) => {
+      const x = e.x + p[0], y = e.y + p[1];
+      if (!i) return ctx.moveTo(x, y);
+      const pv = e.points[i - 1];
+      ctx.quadraticCurveTo(e.x + pv[0], e.y + pv[1], (e.x + pv[0] + x) / 2, (e.y + pv[1] + y) / 2);
+    });
+    ctx.stroke();
+  } else if (e.type === 'line' || e.type === 'arrow') {
+    const pts = e.points.map(p => [e.x + p[0], e.y + p[1]]);
+    strokePath(e, (r, rough) => {
+      for (let i = 1; i < pts.length; i++)
+        sketchLine(r, pts[i-1][0], pts[i-1][1], pts[i][0], pts[i][1], rough);
+    });
+    if (e.type === 'arrow' && pts.length > 1) {
+      const [px, py] = pts[pts.length - 2], [qx, qy] = pts[pts.length - 1];
+      const a = Math.atan2(qy - py, qx - px), L = 14 + e.strokeWidth * 2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(qx, qy); ctx.lineTo(qx - L * Math.cos(a - 0.4), qy - L * Math.sin(a - 0.4));
+      ctx.moveTo(qx, qy); ctx.lineTo(qx - L * Math.cos(a + 0.4), qy - L * Math.sin(a + 0.4));
+      ctx.stroke();
+    }
+  } else {
+    fillShape(e);
+    strokePath(e, (r, rough) => shapePath(e, r, rough));
+  }
+  ctx.restore();
+}
+
+/* ---------- the frame ---------- */
+let dpr = window.devicePixelRatio || 1;
+function resize(){
+  dpr = window.devicePixelRatio || 1;
+  cv.width = wrap.clientWidth * dpr; cv.height = wrap.clientHeight * dpr;
+  cv.style.width = wrap.clientWidth + 'px'; cv.style.height = wrap.clientHeight + 'px';
+  draw();
+}
+let live = null;                                  // element being drawn right now
+let marquee = null;
+
+function draw(){
+  const p = page();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.save();
+  ctx.scale(p.zoom, p.zoom);
+  ctx.translate(p.scrollX, p.scrollY);
+  els2().forEach(e => { if (e.id !== editingId) drawElement(e); });
+  if (live) drawElement(live);
+
+  // the shape an in-flight arrow would attach to
+  if (hoverBind) {
+    const t = els2().find(e => e.id === hoverBind);
+    if (t) { const b = bounds(t), m = 6 / p.zoom;
+      ctx.strokeStyle = '#4b47b8'; ctx.lineWidth = 2 / p.zoom; ctx.setLineDash([]);
+      ctx.globalAlpha = .55;
+      ctx.strokeRect(b.x1 - m, b.y1 - m, b.x2 - b.x1 + m * 2, b.y2 - b.y1 + m * 2);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // selection chrome
+  const sb = selBounds();
+  if (sb && !live) {
+    const pad = 6 / p.zoom;
+    ctx.strokeStyle = '#4b47b8'; ctx.lineWidth = 1 / p.zoom; ctx.setLineDash([4 / p.zoom, 3 / p.zoom]);
+    ctx.strokeRect(sb.x1 - pad, sb.y1 - pad, sb.x2 - sb.x1 + pad * 2, sb.y2 - sb.y1 + pad * 2);
+    ctx.setLineDash([]);
+    handles(sb).forEach(h => {
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = '#4b47b8';
+      const s = 8 / p.zoom;
+      ctx.fillRect(h.x - s/2, h.y - s/2, s, s);
+      ctx.strokeRect(h.x - s/2, h.y - s/2, s, s);
+    });
+    const rh = rotHandle(sb);                       // rotation grip above the box
+    const rotatable = [...selected].map(id => els2().find(e => e.id === id))
+      .some(e => e && e.type !== 'frame');
+    if (rotatable) {
+      ctx.beginPath(); ctx.moveTo(rh.x, sb.y1 - 6 / p.zoom); ctx.lineTo(rh.x, rh.y);
+      ctx.strokeStyle = '#4b47b8'; ctx.lineWidth = 1 / p.zoom; ctx.stroke();
+      ctx.beginPath(); ctx.arc(rh.x, rh.y, 5.5 / p.zoom, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill(); ctx.stroke();
+    }
+    // a dashed ring around each group caught in the selection
+    const gids = new Set([...selected].map(id => els2().find(e => e.id === id)?.groupId).filter(Boolean));
+    gids.forEach(g => {
+      const bs = els2().filter(e => e.groupId === g).map(abox);
+      if (!bs.length) return;
+      const m = 10 / p.zoom;
+      ctx.strokeStyle = '#9d9ad6'; ctx.setLineDash([2 / p.zoom, 3 / p.zoom]);
+      ctx.strokeRect(Math.min(...bs.map(b=>b.x1)) - m, Math.min(...bs.map(b=>b.y1)) - m,
+        Math.max(...bs.map(b=>b.x2)) - Math.min(...bs.map(b=>b.x1)) + m*2,
+        Math.max(...bs.map(b=>b.y2)) - Math.min(...bs.map(b=>b.y1)) + m*2);
+      ctx.setLineDash([]);
+    });
+  }
+  if (marquee) {
+    ctx.fillStyle = 'rgba(75,71,184,.08)'; ctx.strokeStyle = '#4b47b8'; ctx.lineWidth = 1 / p.zoom;
+    const x = Math.min(marquee.x1, marquee.x2), y = Math.min(marquee.y1, marquee.y2);
+    const w = Math.abs(marquee.x2 - marquee.x1), h = Math.abs(marquee.y2 - marquee.y1);
+    ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h);
+  }
+  ctx.restore();
+  document.getElementById('bzoom').textContent = Math.round(p.zoom * 100) + '%';
+}
+function rotHandle(b){
+  const pad = 6 / page().zoom;
+  return {x: (b.x1 + b.x2) / 2, y: b.y1 - pad - 22 / page().zoom};
+}
+function handles(b){
+  const mx = (b.x1 + b.x2) / 2, my = (b.y1 + b.y2) / 2, pad = 6 / page().zoom;
+  return [
+    {n:'nw',x:b.x1-pad,y:b.y1-pad},{n:'n',x:mx,y:b.y1-pad},{n:'ne',x:b.x2+pad,y:b.y1-pad},
+    {n:'e',x:b.x2+pad,y:my},{n:'se',x:b.x2+pad,y:b.y2+pad},{n:'s',x:mx,y:b.y2+pad},
+    {n:'sw',x:b.x1-pad,y:b.y2+pad},{n:'w',x:b.x1-pad,y:my},
+  ];
+}
+
+/* ---------- groups & frames ---------- */
+const gid = () => 'g' + Math.random().toString(36).slice(2, 9);
+/* selecting one member of a group selects the whole group */
+function expand(ids){
+  const out = new Set();
+  ids.forEach(id => {
+    const el = els2().find(e => e.id === id);
+    if (!el) return;
+    out.add(id);
+    if (el.groupId) els2().forEach(o => { if (o.groupId === el.groupId) out.add(o.id); });
+  });
+  return out;
+}
+const frameAt = (x, y) => els2().find(f => f.type === 'frame' && inside(f, x, y, 0));
+/* everything that should travel with the given elements (frame contents) */
+function withFrameContents(list){
+  const out = new Set(list.map(o => o.id));
+  list.forEach(o => {
+    if (o.type !== 'frame') return;
+    els2().forEach(e => { if (e.frameId === o.id) out.add(e.id); });
+  });
+  return [...out].map(id => els2().find(e => e.id === id)).filter(Boolean);
+}
+/* after a move, work out which frame (if any) each element now sits in */
+function reframe(list){
+  list.forEach(el => {
+    if (el.type === 'frame') return;
+    const c = centre(el);
+    const f = frameAt(c.x, c.y);
+    el.frameId = f ? f.id : null;
+  });
+}
+
+/* ---------- history ---------- */
+function commit(){
+  hist.push(JSON.stringify(page().elements));
+  if (hist.length > 80) hist.shift();
+  future = [];
+  saveB();
+}
+function undo(){
+  if (!hist.length) return;
+  future.push(JSON.stringify(page().elements));
+  page().elements = JSON.parse(hist.pop());
+  selected.clear(); refreshBindings(); saveB(); draw(); syncStyles();
+}
+function redo(){
+  if (!future.length) return;
+  hist.push(JSON.stringify(page().elements));
+  page().elements = JSON.parse(future.pop());
+  selected.clear(); refreshBindings(); saveB(); draw(); syncStyles();
+}
+
+/* ---------- element factory ---------- */
+function newElement(type, x, y){
+  return {id: 'e' + Math.random().toString(36).slice(2, 9), type, x, y, w: 0, h: 0,
+    points: (type === 'draw' || type === 'line' || type === 'arrow') ? [[0,0]] : null,
+    text: '', name: '', angle: 0, groupId: null, frameId: null,
+    seed: Math.floor(Math.random() * 1e6),
+    stroke: bstyle.stroke, bg: bstyle.bg, fillStyle: bstyle.fillStyle, strokeWidth: bstyle.strokeWidth,
+    strokeStyle: bstyle.strokeStyle, sloppiness: bstyle.sloppiness, edges: bstyle.edges,
+    opacity: bstyle.opacity, fontSize: bstyle.fontSize};
+}
+
+/* ---------- pointer handling ---------- */
+let drag = null;
+cv.addEventListener('pointerdown', e => {
+  if (e.button === 1 || tool === 'hand' || e.shiftKey && e.button === 2) return startPan(e);
+  try { cv.setPointerCapture(e.pointerId); } catch {}
+  const p = page();
+  const s = evPt(e);
+
+  if (tool === 'eraser') {
+    drag = {mode: 'erase'};
+    return eraseAt(s.x, s.y);
+  }
+  if (tool === 'select') {
+    const sb = selBounds();
+    if (sb) {
+      const rh = rotHandle(sb), rtol = 10 / p.zoom;
+      if (Math.abs(rh.x - s.x) < rtol && Math.abs(rh.y - s.y) < rtol) {
+        const c = {x: (sb.x1 + sb.x2) / 2, y: (sb.y1 + sb.y2) / 2};
+        drag = {mode: 'rotate', c, before: JSON.stringify(els2()),
+          from: Math.atan2(s.y - c.y, s.x - c.x),
+          snapshot: [...selected].map(id => JSON.parse(JSON.stringify(els2().find(x => x.id === id))))
+            .filter(o => o.type !== 'frame')};
+        return;
+      }
+      const hs = handles(sb), tol = 9 / p.zoom;
+      const h = hs.find(h => Math.abs(h.x - s.x) < tol && Math.abs(h.y - s.y) < tol);
+      if (h) { drag = {mode:'resize', h:h.n, start:s, box:sb, before: JSON.stringify(els2()),
+        snapshot: [...selected].map(id => JSON.parse(JSON.stringify(els2().find(x => x.id === id))))};
+        return; }
+    }
+    let hit = hitTest(s.x, s.y);
+    if (!hit) {                                  // a frame is grabbed by its title strip
+      const f = els2().find(e => e.type === 'frame' && (() => {
+        const b = bounds(e); return s.x > b.x1 - 4 && s.x < b.x2 && s.y > b.y1 - 26 && s.y < b.y1; })());
+      if (f) hit = f;
+    }
+    if (hit) {
+      if (e.shiftKey) selected.has(hit.id) ? selected.delete(hit.id) : selected.add(hit.id);
+      else if (!selected.has(hit.id)) { selected.clear(); selected.add(hit.id); }
+      selected = expand(selected);
+      drag = {mode:'move', start:s, before: JSON.stringify(els2()),
+        snapshot: withFrameContents([...selected].map(id => els2().find(x => x.id === id)).filter(Boolean))
+                    .map(el => ({id: el.id, x: el.x, y: el.y}))};
+      syncStyles(); draw();
+      return;
+    }
+    if (!e.shiftKey) selected.clear();
+    marquee = {x1: s.x, y1: s.y, x2: s.x, y2: s.y};
+    drag = {mode:'marquee', base: new Set(selected)};
+    syncStyles(); draw();
+    return;
+  }
+  if (tool === 'text') { e.preventDefault(); startText(s.x, s.y); return; }
+
+  live = newElement(tool, s.x, s.y);
+  drag = {mode: 'create', start: s};
+});
+
+cv.addEventListener('pointermove', e => {
+  const p = page();
+  const s = evPt(e);
+  if (!drag) return;
+  if (drag.mode === 'erase') return eraseAt(s.x, s.y);
+  if (drag.mode === 'marquee') {
+    marquee.x2 = s.x; marquee.y2 = s.y;
+    const x1 = Math.min(marquee.x1, marquee.x2), x2 = Math.max(marquee.x1, marquee.x2);
+    const y1 = Math.min(marquee.y1, marquee.y2), y2 = Math.max(marquee.y1, marquee.y2);
+    selected = new Set(drag.base);
+    els2().forEach(el => { const b = abox(el);
+      if (b.x1 < x2 && b.x2 > x1 && b.y1 < y2 && b.y2 > y1) selected.add(el.id); });
+    selected = expand(selected);
+    return draw();
+  }
+  if (drag.mode === 'move') {
+    const dx = s.x - drag.start.x, dy = s.y - drag.start.y;
+    drag.snapshot.forEach(o => { const el = els2().find(x => x.id === o.id); el.x = o.x + dx; el.y = o.y + dy; });
+    refreshBindings(new Set(drag.snapshot.map(o => o.id)));
+    if (drag.snapshot.length === 1) {                 // dragging a lone arrow: preview its attachment
+      const el = els2().find(x => x.id === drag.snapshot[0].id);
+      hoverBind = el?.type === 'arrow'
+        ? (bindableAt(el.x + el.points[1][0], el.y + el.points[1][1], el.id)?.id || null) : null;
+    }
+    return draw();
+  }
+  if (drag.mode === 'rotate') {
+    let d = Math.atan2(s.y - drag.c.y, s.x - drag.c.x) - drag.from;
+    if (e.shiftKey) d = Math.round(d / (Math.PI / 12)) * (Math.PI / 12);   // 15° steps
+    drag.snapshot.forEach(o => {
+      const el = els2().find(x => x.id === o.id);
+      el.angle = (o.angle || 0) + d;
+      const oc = {x: (bounds(o).x1 + bounds(o).x2) / 2, y: (bounds(o).y1 + bounds(o).y2) / 2};
+      const nc = rot(oc.x, oc.y, drag.c.x, drag.c.y, d);   // orbit around the selection centre
+      el.x = o.x + (nc.x - oc.x); el.y = o.y + (nc.y - oc.y);
+    });
+    refreshBindings(new Set(drag.snapshot.map(o => o.id)));
+    return draw();
+  }
+  if (drag.mode === 'resize') {
+    const only = drag.snapshot.length === 1 ? drag.snapshot[0] : null;
+    if (only && only.angle) {                    // work in the element's unrotated frame
+      const el = els2().find(x => x.id === only.id);
+      const ob = bounds(only);
+      const oc = {x: (ob.x1 + ob.x2) / 2, y: (ob.y1 + ob.y2) / 2};
+      const l = rot(s.x, s.y, oc.x, oc.y, -only.angle);
+      let {x1, y1, x2, y2} = ob;
+      if (drag.h.includes('w')) x1 = l.x; if (drag.h.includes('e')) x2 = l.x;
+      if (drag.h.includes('n')) y1 = l.y; if (drag.h.includes('s')) y2 = l.y;
+      // the corner opposite the handle must not move on screen
+      const anchorL = {x: drag.h.includes('w') ? ob.x2 : ob.x1, y: drag.h.includes('n') ? ob.y2 : ob.y1};
+      const anchorW = rot(anchorL.x, anchorL.y, oc.x, oc.y, only.angle);
+      el.x = only.x + (x1 - ob.x1); el.y = only.y + (y1 - ob.y1);
+      el.w = x2 - x1; el.h = y2 - y1;
+      const nb = bounds(el), nc = {x: (nb.x1 + nb.x2) / 2, y: (nb.y1 + nb.y2) / 2};
+      const newAnchorL = {x: drag.h.includes('w') ? nb.x2 : nb.x1, y: drag.h.includes('n') ? nb.y2 : nb.y1};
+      const newAnchorW = rot(newAnchorL.x, newAnchorL.y, nc.x, nc.y, only.angle);
+      el.x += anchorW.x - newAnchorW.x; el.y += anchorW.y - newAnchorW.y;
+      refreshBindings(new Set([el.id]));
+      return draw();
+    }
+    const b = drag.box, h = drag.h;
+    let nx1 = b.x1, ny1 = b.y1, nx2 = b.x2, ny2 = b.y2;
+    if (h.includes('w')) nx1 = s.x; if (h.includes('e')) nx2 = s.x;
+    if (h.includes('n')) ny1 = s.y; if (h.includes('s')) ny2 = s.y;
+    const sx = (nx2 - nx1) / ((b.x2 - b.x1) || 1), sy = (ny2 - ny1) / ((b.y2 - b.y1) || 1);
+    drag.snapshot.forEach(o => {
+      const el = els2().find(x => x.id === o.id);
+      el.x = nx1 + (o.x - b.x1) * sx; el.y = ny1 + (o.y - b.y1) * sy;
+      if (o.points) el.points = o.points.map(pt => [pt[0] * sx, pt[1] * sy]);
+      else { el.w = o.w * sx; el.h = o.h * sy; }
+      if (o.type === 'text') el.fontSize = Math.max(8, o.fontSize * Math.abs(sy));
+    });
+    refreshBindings(new Set(drag.snapshot.map(o => o.id)));
+    return draw();
+  }
+  if (drag.mode === 'create' && live) {
+    if (live.type === 'arrow') hoverBind = bindableAt(s.x, s.y, live.id)?.id || null;
+    if (live.points) {
+      if (live.type === 'draw') live.points.push([s.x - live.x, s.y - live.y]);
+      else live.points[1] = [s.x - live.x, s.y - live.y];
+    } else {
+      live.w = s.x - live.x; live.h = s.y - live.y;
+      if (e.shiftKey) { const m = Math.max(Math.abs(live.w), Math.abs(live.h));
+        live.w = Math.sign(live.w) * m; live.h = Math.sign(live.h) * m; }
+    }
+    return draw();
+  }
+});
+
+cv.addEventListener('pointerup', () => {
+  if (drag?.mode === 'create' && live) {
+    const b = bounds(live);
+    const tiny = (b.x2 - b.x1) < 3 && (b.y2 - b.y1) < 3;
+    if (!tiny) {
+      commit();
+      if (live.type === 'frame') {
+        live.name = 'Frame ' + (els2().filter(e => e.type === 'frame').length + 1);
+        els2().unshift(live);                          // frames render behind their contents
+        reframe(els2().filter(e => e.type !== 'frame'));
+      } else els2().push(live);
+      if (live.type === 'arrow') bindArrowEnds(live);   // snap to whatever it was drawn onto
+      selected = new Set([live.id]);
+      saveB();
+    }
+    live = null;
+    if (!keepTool) { tool = 'select'; setTool('select'); }
+  } else if (drag?.mode === 'move') {
+    // an arrow dragged onto a shape binds; dragged clear of one, it lets go
+    const moved = drag.snapshot.map(o => els2().find(x => x.id === o.id)).filter(Boolean);
+    moved.forEach(el => { if (el.type === 'arrow') bindArrowEnds(el); });
+    reframe(moved);
+  }
+  if (drag?.before && drag.before !== JSON.stringify(els2())) {
+    hist.push(drag.before);                     // snapshot is the state BEFORE the drag
+    if (hist.length > 80) hist.shift();
+    future = [];
+    saveB();
+  }
+  marquee = null; drag = null; hoverBind = null;
+  syncStyles(); draw();
+});
+
+function eraseAt(x, y){
+  const hit = hitTest(x, y);
+  if (!hit) return;
+  commit();
+  page().elements = els2().filter(e => e !== hit);
+  selected.delete(hit.id);
+  refreshBindings(new Set([hit.id]));
+  saveB(); draw();
+}
+
+/* ---------- pan & zoom ---------- */
+function startPan(e){
+  wrap.classList.add('panning');
+  const p = page(), sx = e.clientX, sy = e.clientY, ox = p.scrollX, oy = p.scrollY;
+  const move = ev => { p.scrollX = ox + (ev.clientX - sx) / p.zoom; p.scrollY = oy + (ev.clientY - sy) / p.zoom; draw(); };
+  const up = () => { wrap.classList.remove('panning'); saveB();
+    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); };
+  document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+}
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const p = page();
+  if (e.ctrlKey || e.metaKey) {
+    const before = evPt(e);
+    p.zoom = Math.min(8, Math.max(0.1, p.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+    const after = evPt(e);
+    p.scrollX += after.x - before.x; p.scrollY += after.y - before.y;
+  } else {
+    p.scrollX -= e.deltaX / p.zoom; p.scrollY -= e.deltaY / p.zoom;
+  }
+  saveB(); draw();
+}, {passive: false});
+
+function zoomBy(f){
+  const p = page();
+  const cx = wrap.clientWidth / 2, cy = wrap.clientHeight / 2;
+  const before = toScene(cx, cy);
+  p.zoom = Math.min(8, Math.max(0.1, p.zoom * f));
+  const after = toScene(cx, cy);
+  p.scrollX += after.x - before.x; p.scrollY += after.y - before.y;
+  saveB(); draw();
+}
+document.getElementById('bzin').onclick = () => zoomBy(1.2);
+document.getElementById('bzout').onclick = () => zoomBy(1/1.2);
+document.getElementById('bzoom').onclick = () => { page().zoom = 1; saveB(); draw(); };
+document.getElementById('bzfit').onclick = () => {
+  const p = page();
+  if (!els2().length) { p.zoom = 1; p.scrollX = p.scrollY = 0; return draw(); }
+  const bs = els2().map(abox);
+  const x1 = Math.min(...bs.map(b => b.x1)), y1 = Math.min(...bs.map(b => b.y1));
+  const x2 = Math.max(...bs.map(b => b.x2)), y2 = Math.max(...bs.map(b => b.y2));
+  p.zoom = Math.min(4, Math.max(0.1, Math.min(wrap.clientWidth / (x2 - x1 + 120),
+                                              wrap.clientHeight / (y2 - y1 + 120))));
+  p.scrollX = -x1 + (wrap.clientWidth / p.zoom - (x2 - x1)) / 2;
+  p.scrollY = -y1 + (wrap.clientHeight / p.zoom - (y2 - y1)) / 2;
+  saveB(); draw();
+};
+document.getElementById('bundo').onclick = undo;
+document.getElementById('bredo').onclick = redo;
+
+/* ---------- text ---------- */
+function startText(x, y, existing){
+  const p = page();
+  const el = existing || newElement('text', x, y);
+  editingId = el.id;
+  tarea.style.display = 'block';
+  tarea.style.left = ((el.x + p.scrollX) * p.zoom) + 'px';
+  tarea.style.top  = ((el.y + p.scrollY) * p.zoom) + 'px';
+  tarea.style.font = (el.fontSize * p.zoom) + "px 'Bradley Hand','Comic Sans MS','Segoe Print',cursive";
+  tarea.style.color = el.stroke;
+  tarea.value = el.text || '';
+  tarea.rows = 1;
+  const grow = () => { tarea.style.height = 'auto'; tarea.style.height = tarea.scrollHeight + 'px';
+    tarea.style.width = Math.max(40, tarea.scrollWidth + 20) + 'px'; };
+  tarea.oninput = grow; grow();
+  draw();
+  // focus on the next frame, and only arm the blur handler once focus has
+  // actually landed — otherwise the click that opened the editor closes it
+  tarea.onblur = null;
+  requestAnimationFrame(() => {
+    tarea.focus();
+    tarea.setSelectionRange(tarea.value.length, tarea.value.length);
+    requestAnimationFrame(() => { tarea.onblur = commit_text; });
+  });
+  function commit_text(){
+    tarea.style.display = 'none';
+    editingId = null;
+    const txt = tarea.value.replace(/\s+$/, '');
+    if (txt) {
+      commit();
+      el.text = txt;
+      const lines = txt.split('\n');
+      ctx.font = el.fontSize + "px 'Bradley Hand','Comic Sans MS','Segoe Print',cursive";
+      el.w = Math.max(...lines.map(l => ctx.measureText(l).width));
+      el.h = lines.length * el.fontSize * 1.25;
+      if (!els2().includes(el)) els2().push(el);
+      saveB();
+    } else if (els2().includes(el)) {
+      page().elements = els2().filter(x => x !== el);
+      saveB();
+    }
+    if (!keepTool) setTool('select');
+    draw();
+  }
+}
+cv.addEventListener('dblclick', e => {
+  e.preventDefault();
+  const s = evPt(e);
+  const f = els2().find(e => e.type === 'frame' && (() => {
+    const b = bounds(e); return s.x > b.x1 - 4 && s.x < b.x2 && s.y > b.y1 - 26 && s.y < b.y1; })());
+  if (f) { renameFrame(f); return; }
+  const hit = hitTest(s.x, s.y);
+  if (hit && hit.type === 'text') startText(0, 0, hit);
+  else startText(s.x, s.y);
+});
+
+/* rename a frame in place, over its own title strip */
+function renameFrame(f){
+  const p = page(), b = bounds(f), r = cv.getBoundingClientRect();
+  const inp = document.createElement('input');
+  inp.className = 'framename';
+  inp.value = f.name || '';
+  inp.style.left = (r.left + (b.x1 + p.scrollX) * p.zoom) + 'px';
+  inp.style.top  = (r.top + (b.y1 + p.scrollY) * p.zoom - 26) + 'px';
+  document.body.appendChild(inp);
+  requestAnimationFrame(() => { inp.focus(); inp.select(); });
+  inp.onkeydown = e => {
+    e.stopPropagation();
+    if (e.key === 'Enter') inp.blur();
+    if (e.key === 'Escape') { inp.onblur = null; inp.remove(); }
+  };
+  inp.onblur = () => {
+    const v = inp.value.trim();
+    if (v && v !== f.name) { commit(); f.name = v; saveB(); }
+    inp.remove(); draw();
+  };
+}
+
+/* ---------- tools & style panel ---------- */
+let keepTool = false;                             // locked tool (double-click a tool button)
+function setTool(t){
+  tool = t;
+  document.querySelectorAll('#tools button').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  wrap.className = 'tool-' + t;
+  syncStyles();
+}
+document.querySelectorAll('#tools button').forEach(b => {
+  b.onclick = () => setTool(b.dataset.tool);
+  b.ondblclick = () => { keepTool = !keepTool; b.style.boxShadow = keepTool ? 'inset 0 0 0 2px #4b47b8' : ''; };
+});
+
+const SHAPE_TOOLS = ['rect','diamond','ellipse','arrow','line','draw','text','frame'];
+function syncStyles(){
+  const panel = document.getElementById('styles');
+  const showFor = SHAPE_TOOLS.includes(tool) || selected.size;
+  panel.classList.toggle('on', !!showFor);
+  if (!showFor) return;
+  const sel = [...selected].map(id => els2().find(e => e.id === id)).filter(Boolean);
+  const cur = sel.length ? sel[0] : bstyle;
+  const onlyFrames = sel.length && sel.every(e => e.type === 'frame');
+  const isText = sel.length ? sel.every(e => e.type === 'text') : tool === 'text';
+  const isLinear = sel.length ? sel.every(e => ['line','arrow','draw'].includes(e.type))
+                              : ['line','arrow','draw'].includes(tool);
+
+  const set = (k, v) => {
+    if (sel.length) { commit(); sel.forEach(e => e[k] = v); saveB(); }
+    bstyle[k] = v; saveStyle(); syncStyles(); draw();
+  };
+  const row = (label, html) => '<section><h4>' + label + '</h4>' + html + '</section>';
+  const swatch = (list, k) => '<div class="swatches">' + list.map(c =>
+    '<button class="sw' + (cur[k] === c ? ' on' : '') + (c === 'transparent' ? ' clear' : '') +
+    '" data-k="' + k + '" data-v="' + c + '"' +
+    (c === 'transparent' ? '' : ' style="background:' + c + '"') + '></button>').join('') + '</div>';
+  const opts = (k, list) => '<div class="opts">' + list.map(([v, lab]) =>
+    '<button class="opt' + (String(cur[k]) === String(v) ? ' on' : '') + '" data-k="' + k +
+    '" data-v="' + v + '" data-num="' + (typeof v === 'number') + '">' + lab + '</button>').join('') + '</div>';
+
+  let h = onlyFrames ? '' : row('Stroke', swatch(STROKES, 'stroke'));
+  if (!onlyFrames && !isText && !isLinear) h += row('Background', swatch(FILLS, 'bg'));
+  if (!onlyFrames && !isText && !isLinear && cur.bg !== 'transparent')
+    h += row('Fill', opts('fillStyle', [['hachure','▧'],['cross','▨'],['solid','■']]));
+  if (!onlyFrames && !isText) h += row('Stroke width', opts('strokeWidth', [[1,'▁'],[2,'▂'],[4,'▄']]));
+  if (!onlyFrames && !isText) h += row('Stroke style', opts('strokeStyle', [['solid','—'],['dashed','- -'],['dotted','· ·']]));
+  if (!onlyFrames && !isText) h += row('Sloppiness', opts('sloppiness', [[0,'△'],[1,'◺'],[2,'✦']]));
+  if (!isText && (sel.length ? sel.some(e => e.type === 'rect') : tool === 'rect'))
+    h += row('Edges', opts('edges', [['sharp','⬛'],['round','▢']]));
+  if (isText) h += row('Font size', opts('fontSize', [[16,'S'],[20,'M'],[28,'L'],[40,'XL']]));
+  h += row('Opacity', '<input type="range" min="10" max="100" step="10" value="' + (cur.opacity ?? 100) + '" id="opac">');
+  if (sel.length > 1 || sel.some(e => e.groupId)) {
+    const canGroup = sel.filter(e => e.type !== 'frame').length > 1;
+    h += row('Group',
+      '<div class="opts">' +
+      (canGroup ? '<button class="opt" data-act="group" title="Group — ⌘G">⧉ Group</button>' : '') +
+      (sel.some(e => e.groupId) ? '<button class="opt" data-act="ungroup" title="Ungroup — ⇧⌘G">⤬ Ungroup</button>' : '') +
+      '</div>');
+  }
+  if (sel.some(e => e.angle)) h += row('Rotation',
+    '<div class="opts"><button class="opt" data-act="unrotate">Reset to 0°</button></div>');
+  if (sel.length) h += row('Layers',
+    '<div class="opts"><button class="opt" data-act="back">⤓</button><button class="opt" data-act="front">⤒</button>' +
+    '<button class="opt" data-act="dup">⧉</button><button class="opt" data-act="del">🗑</button></div>');
+  panel.innerHTML = h;
+
+  panel.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
+    const v = b.dataset.num === 'true' ? Number(b.dataset.v) : b.dataset.v;
+    set(b.dataset.k, v);
+  });
+  const op = panel.querySelector('#opac');
+  if (op) op.oninput = () => set('opacity', Number(op.value));
+  panel.querySelectorAll('[data-act]').forEach(b => b.onclick = () => {
+    const act = b.dataset.act;
+    commit();
+    if (act === 'del') { const gone = new Set(selected);
+      page().elements = els2().filter(e => !selected.has(e.id));
+      els2().forEach(e => { if (gone.has(e.frameId)) e.frameId = null; });
+      selected.clear(); refreshBindings(gone); }
+    if (act === 'front') { const keep = els2().filter(e => !selected.has(e.id));
+      page().elements = [...keep, ...els2().filter(e => selected.has(e.id))]; }
+    if (act === 'back') { const keep = els2().filter(e => !selected.has(e.id));
+      page().elements = [...els2().filter(e => selected.has(e.id)), ...keep]; }
+    if (act === 'dup') {
+      const remap = {};                                  // copies form their own group
+      const copies = els2().filter(e => selected.has(e.id)).map(e => {
+        if (e.groupId && !remap[e.groupId]) remap[e.groupId] = gid();
+        return {...JSON.parse(JSON.stringify(e)),
+          id: 'e' + Math.random().toString(36).slice(2,9),
+          groupId: e.groupId ? remap[e.groupId] : null,
+          x: e.x + 20, y: e.y + 20};
+      });
+      els2().push(...copies); selected = new Set(copies.map(c => c.id));
+    }
+    if (act === 'group') return groupSelection();
+    if (act === 'ungroup') return ungroupSelection();
+    if (act === 'unrotate') { els2().forEach(e => { if (selected.has(e.id)) e.angle = 0; });
+      refreshBindings(new Set(selected)); }
+    saveB(); syncStyles(); draw();
+  });
+}
+
+/* ---------- keyboard ---------- */
+const KEYS = {v:'select', h:'hand', r:'rect', d:'diamond', o:'ellipse', a:'arrow', l:'line', p:'draw', t:'text', e:'eraser', f:'frame'};
+document.addEventListener('keydown', e => {
+  if (e.target === tarea || /input|textarea/i.test(e.target.tagName)) return;
+  const mod = e.metaKey || e.ctrlKey;
+  if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); selected = new Set(els2().map(x => x.id)); syncStyles(); draw(); return; }
+  if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); document.querySelector('[data-act="dup"]')?.click(); return; }
+  if (mod && e.key.toLowerCase() === 'g') {
+    e.preventDefault();
+    e.shiftKey ? ungroupSelection() : groupSelection();
+    return;
+  }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (!selected.size) return;
+    e.preventDefault(); commit();
+    const gone = new Set(selected);
+    page().elements = els2().filter(x => !selected.has(x.id));
+    selected.clear(); refreshBindings(gone); saveB(); syncStyles(); draw(); return;
+  }
+  if (e.key === 'Escape') { selected.clear(); setTool('select'); draw(); return; }
+  const t = KEYS[e.key.toLowerCase()];
+  if (t && !mod) setTool(t);
+});
+
+function groupSelection(){
+  const list = [...selected].map(id => els2().find(e => e.id === id))
+    .filter(e => e && e.type !== 'frame');
+  if (list.length < 2) return;
+  commit();
+  const g = gid();
+  list.forEach(e => e.groupId = g);
+  saveB(); syncStyles(); draw();
+}
+function ungroupSelection(){
+  const list = [...selected].map(id => els2().find(e => e.id === id)).filter(Boolean);
+  if (!list.some(e => e.groupId)) return;
+  commit();
+  list.forEach(e => e.groupId = null);
+  saveB(); syncStyles(); draw();
+}
+
+document.getElementById('bexport').onclick = () => {
+  if (!els2().length) return (typeof toast === 'function' ? toast('Nothing to export yet.') : null);
+  // one frame selected? export exactly that frame
+  const selFrames = [...selected].map(id => els2().find(e => e.id === id))
+    .filter(e => e && e.type === 'frame');
+  const target = selFrames.length === 1 ? selFrames[0] : null;
+  const bs = target ? [bounds(target)] : els2().map(abox);
+  const pad = target ? 0 : 40;
+  const x1 = Math.min(...bs.map(b => b.x1)) - pad, y1 = Math.min(...bs.map(b => b.y1)) - pad;
+  const x2 = Math.max(...bs.map(b => b.x2)) + pad, y2 = Math.max(...bs.map(b => b.y2)) + pad;
+  const out = document.createElement('canvas');
+  const scale = 2;
+  out.width = (x2 - x1) * scale; out.height = (y2 - y1) * scale;
+  const octx = out.getContext('2d');
+  octx.fillStyle = '#fff'; octx.fillRect(0, 0, out.width, out.height);
+  octx.scale(scale, scale); octx.translate(-x1, -y1);
+  const onScreen = ctx;                 // point the renderer at the export canvas
+  ctx = octx;
+  els2().filter(e => !target || e === target || e.frameId === target.id).forEach(drawElement);
+  ctx = onScreen;
+  const a = document.createElement('a');
+  a.download = page().name.replace(/[^\w -]/g, '') + '.png';
+  a.href = out.toDataURL('image/png');
+  a.click();
+};
+
+
+/* =========================================================
+   Sections + canvases rail, and the editable app title.
+   Canvases live in sections; both can be dragged to reorder.
+   ========================================================= */
+
+/* older saves had a flat page list — give them a home */
+if (!B.sections) {
+  B.sections = [{id: 's1', name: 'Canvases', open: true}];
+  B.pages.forEach(p => p.sectionId = 's1');
+  B.title = B.title || 'Brainstorms';
+  saveB();
+}
+const sid = () => 's' + Math.random().toString(36).slice(2, 9);
+const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const sectionPages = s => B.pages.filter(p => p.sectionId === s.id);
+
+/* ---------- in-page confirm popover & toast ---------- */
+let openPop = null;
+function closePop(){ openPop?.remove(); openPop = null; }
+/* anchor the card to the element that triggered it, flipping above/below to fit */
+function askNear(anchor, message, confirmLabel, onYes){
+  closePop();
+  const pop = document.createElement('div');
+  pop.className = 'pop';
+  pop.innerHTML = '<p>' + message + '</p><div class="row"></div>';
+  const cancel = document.createElement('button');
+  cancel.textContent = 'Cancel';
+  cancel.onclick = e => { e.stopPropagation(); closePop(); };
+  const yes = document.createElement('button');
+  yes.className = 'danger'; yes.textContent = confirmLabel || 'Delete';
+  yes.onclick = e => { e.stopPropagation(); closePop(); onYes(); };
+  pop.querySelector('.row').append(cancel, yes);
+  document.body.appendChild(pop);
+
+  const r = anchor.getBoundingClientRect();
+  const w = pop.offsetWidth, h = pop.offsetHeight, gap = 10;
+  const above = r.top > h + gap + 8;
+  pop.classList.add(above ? 'above' : 'below');
+  let left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
+  pop.style.left = left + 'px';
+  pop.style.top = (above ? r.top - h - gap : r.bottom + gap) + 'px';
+  // point the caret at the button, even when the card was nudged to stay on screen
+  const caret = Math.min(Math.max(12, r.left + r.width / 2 - left - 4.5), w - 21);
+  const style = document.createElement('style');
+  style.textContent = '.pop:after{left:' + caret + 'px}';
+  pop.appendChild(style);
+  openPop = pop;
+  setTimeout(() => document.addEventListener('pointerdown', outside, {once: true}), 0);
+  function outside(ev){ if (openPop && !openPop.contains(ev.target)) closePop(); }
+}
+function toast(msg){
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); });
+
+/* ---------- app title ---------- */
+const titleEl = document.getElementById('apptitle');
+function paintTitle(){ titleEl.textContent = B.title || 'Brainstorms'; document.title = B.title || 'Brainstorms'; }
+titleEl.ondblclick = () => {
+  const inp = document.createElement('input');
+  inp.className = 'titleedit';
+  inp.value = B.title || '';
+  titleEl.replaceWith(inp);
+  inp.focus(); inp.select();
+  const done = () => {
+    B.title = inp.value.trim() || 'Brainstorms';
+    saveB();
+    inp.replaceWith(titleEl);
+    paintTitle();
+  };
+  inp.onblur = done;
+  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { inp.value = B.title; inp.blur(); } };
+};
+
+/* ---------- inline rename for a rail row ---------- */
+function renameInline(span, current, apply){
+  const inp = document.createElement('input');
+  inp.className = 'railedit';
+  inp.value = current;
+  span.replaceWith(inp);
+  inp.focus(); inp.select();
+  const done = () => { apply(inp.value.trim() || current); renderRail(); };
+  inp.onblur = done;
+  inp.onkeydown = e => {
+    e.stopPropagation();
+    if (e.key === 'Enter') inp.blur();
+    if (e.key === 'Escape') { inp.onblur = null; renderRail(); }
+  };
+  inp.onclick = e => e.stopPropagation();
+}
+
+/* ---------- drag & drop ---------- */
+let dragItem = null;                    // {kind:'page'|'section', id}
+function clearDropMarks(){
+  document.querySelectorAll('.droptop,.dropbot,.dropinto').forEach(e =>
+    e.classList.remove('droptop','dropbot','dropinto'));
+}
+/* move a page so it sits just before/after `refId` (or at the end of a section) */
+function movePage(pageId, sectionId, refId, after){
+  const p = B.pages.find(x => x.id === pageId);
+  if (!p) return;
+  B.pages = B.pages.filter(x => x.id !== pageId);
+  p.sectionId = sectionId;
+  if (!refId) { B.pages.push(p); }
+  else {
+    const i = B.pages.findIndex(x => x.id === refId);
+    B.pages.splice(i < 0 ? B.pages.length : i + (after ? 1 : 0), 0, p);
+  }
+  saveB(); renderRail();
+}
+function moveSection(id, refId, after){
+  const i = B.sections.findIndex(s => s.id === id);
+  if (i < 0) return;
+  const [s] = B.sections.splice(i, 1);
+  const j = B.sections.findIndex(x => x.id === refId);
+  B.sections.splice(j < 0 ? B.sections.length : j + (after ? 1 : 0), 0, s);
+  saveB(); renderRail();
+}
+
+/* ---------- the rail ---------- */
+function renderRail(){
+  const rail = document.getElementById('rail');
+  rail.innerHTML = '';
+
+  B.sections.forEach(sec => {
+    const head = document.createElement('div');
+    head.className = 'sechead';
+    head.draggable = true;
+
+    const tw = document.createElement('button');
+    tw.className = 'twist';
+    tw.textContent = sec.open === false ? '▸' : '▾';
+    tw.onclick = e => { e.stopPropagation(); sec.open = sec.open === false; saveB(); renderRail(); };
+
+    const nm = document.createElement('span');
+    nm.className = 'secname';
+    nm.textContent = sec.name;
+    nm.title = 'Double-click to rename';
+    nm.ondblclick = e => { e.stopPropagation();
+      renameInline(nm, sec.name, v => { sec.name = v; saveB(); }); };
+
+    const add = document.createElement('button');
+    add.className = 'secbtn'; add.textContent = '+'; add.title = 'New canvas in this section';
+    add.onclick = e => { e.stopPropagation(); newPage(sec.id); };
+
+    const del = document.createElement('button');
+    del.className = 'secbtn'; del.textContent = '✕'; del.title = 'Delete section';
+    del.onclick = e => {
+      e.stopPropagation();
+      if (B.sections.length === 1) return toast('Keep at least one section.');
+      const fallback = B.sections.find(s => s !== sec);
+      const n = sectionPages(sec).length;
+      const msg = 'Delete <b>' + esc(sec.name) + '</b>?' + (n
+        ? ' Its ' + n + ' canvas' + (n > 1 ? 'es' : '') + ' move to <b>' + esc(fallback.name) + '</b>.' : '');
+      askNear(del, msg, 'Delete', () => {
+        B.pages.forEach(p => { if (p.sectionId === sec.id) p.sectionId = fallback.id; });
+        B.sections = B.sections.filter(s => s !== sec);
+        saveB(); renderRail();
+      });
+    };
+
+    head.append(tw, nm, add, del);
+
+    head.ondragstart = e => { dragItem = {kind:'section', id: sec.id}; e.dataTransfer.effectAllowed = 'move'; };
+    head.ondragover = e => {
+      if (!dragItem) return;
+      e.preventDefault(); clearDropMarks();
+      if (dragItem.kind === 'page') head.classList.add('dropinto');
+      else head.classList.add(e.offsetY > head.offsetHeight / 2 ? 'dropbot' : 'droptop');
+    };
+    head.ondrop = e => {
+      e.preventDefault(); e.stopPropagation();
+      if (!dragItem) return;
+      if (dragItem.kind === 'page') movePage(dragItem.id, sec.id, null);
+      else if (dragItem.id !== sec.id) moveSection(dragItem.id, sec.id, e.offsetY > head.offsetHeight / 2);
+      clearDropMarks(); dragItem = null;
+    };
+    rail.appendChild(head);
+
+    if (sec.open === false) return;
+
+    const list = sectionPages(sec);
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'secempty';
+      empty.textContent = 'No canvases yet';
+      empty.ondragover = e => { if (dragItem?.kind === 'page') { e.preventDefault(); empty.classList.add('dropinto'); } };
+      empty.ondragleave = () => empty.classList.remove('dropinto');
+      empty.ondrop = e => { e.preventDefault(); if (dragItem?.kind === 'page') movePage(dragItem.id, sec.id, null);
+        clearDropMarks(); dragItem = null; };
+      rail.appendChild(empty);
+    }
+
+    list.forEach(p => {
+      const a = document.createElement('a');
+      a.className = 'page' + (p.id === B.active ? ' on' : '');
+      a.draggable = true;
+
+      const nmp = document.createElement('span');
+      nmp.className = 'pg';
+      nmp.textContent = p.name;
+      nmp.title = 'Double-click to rename';
+
+      const x = document.createElement('button');
+      x.className = 'pgx'; x.textContent = '✕'; x.title = 'Delete canvas';
+      x.onclick = e => {
+        e.stopPropagation();
+        if (B.pages.length === 1) return toast('This is your only canvas — make another one first.');
+        askNear(x, 'Delete <b>' + esc(p.name) + '</b> and everything on it?', 'Delete', () => {
+          B.pages = B.pages.filter(q => q.id !== p.id);
+          if (B.active === p.id) B.active = B.pages[0].id;
+          hist = []; future = []; selected.clear();
+          saveB(); renderRail(); resize(); draw();
+        });
+      };
+
+      a.append(nmp, x);
+      a.onclick = () => { B.active = p.id; saveB(); renderRail(); selected.clear(); hist = []; future = []; resize(); draw(); };
+      nmp.ondblclick = e => { e.stopPropagation();
+        renameInline(nmp, p.name, v => { p.name = v; saveB(); paintPageName(); }); };
+
+      a.ondragstart = e => { dragItem = {kind:'page', id: p.id}; e.dataTransfer.effectAllowed = 'move'; };
+      a.ondragend = () => { clearDropMarks(); dragItem = null; };
+      a.ondragover = e => {
+        if (dragItem?.kind !== 'page') return;
+        e.preventDefault(); clearDropMarks();
+        a.classList.add(e.offsetY > a.offsetHeight / 2 ? 'dropbot' : 'droptop');
+      };
+      a.ondrop = e => {
+        e.preventDefault(); e.stopPropagation();
+        if (dragItem?.kind === 'page' && dragItem.id !== p.id)
+          movePage(dragItem.id, sec.id, p.id, e.offsetY > a.offsetHeight / 2);
+        clearDropMarks(); dragItem = null;
+      };
+      rail.appendChild(a);
+    });
+  });
+
+  const addSec = document.createElement('a');
+  addSec.className = 'page newsec';
+  addSec.innerHTML = '<span class="pg">+ New section</span>';
+  addSec.onclick = () => {
+    B.sections.push({id: sid(), name: 'Section ' + (B.sections.length + 1), open: true});
+    saveB(); renderRail();
+  };
+  rail.appendChild(addSec);
+
+  paintPageName();
+}
+
+function paintPageName(){
+  const el = document.getElementById('bpagename');
+  if (el) el.textContent = page().name;
+  const crumb = document.getElementById('crumb');
+  if (crumb) crumb.textContent = page().name;
+}
+
+function newPage(sectionId){
+  const p = {id: 'p' + Date.now(), name: 'Canvas ' + (B.pages.length + 1),
+    sectionId: sectionId || B.sections[0].id, elements: [], scrollX: 0, scrollY: 0, zoom: 1};
+  B.pages.push(p);
+  B.active = p.id;
+  hist = []; future = []; selected.clear();
+  saveB(); renderRail(); resize(); draw();
+}
+
+document.getElementById('brename').onclick = () => {
+  // reuse the rail's inline rename rather than a browser prompt
+  const row = [...document.querySelectorAll('nav a.page.on .pg')][0];
+  if (!row) return;
+  document.body.classList.remove('collapsed');
+  placeStylePanel();
+  requestAnimationFrame(() => row.dispatchEvent(new MouseEvent('dblclick', {bubbles: true})));
+};
+document.getElementById('bdelete').onclick = e => {
+  if (B.pages.length === 1) return toast('This is your only canvas — make another one first.');
+  askNear(e.currentTarget, 'Delete <b>' + esc(page().name) + '</b> and everything on it?', 'Delete', () => {
+    B.pages = B.pages.filter(p => p.id !== B.active);
+    B.active = B.pages[0].id;
+    hist = []; future = []; selected.clear();
+    saveB(); renderRail(); draw();
+  });
+};
+document.getElementById('menubtn').onclick = () => {
+  document.body.classList.toggle('collapsed');
+  localStorage.setItem('exc-collapsed', document.body.classList.contains('collapsed') ? '1' : '');
+  placeStylePanel();
+};
+/* the style panel sits beside the canvases panel, or takes its place when hidden */
+function placeStylePanel(){
+  const open = !document.body.classList.contains('collapsed');
+  const nav = document.getElementById('rail');
+  const styles = document.getElementById('styles');
+  styles.style.left = (open ? 12 + nav.offsetWidth + 10 : 12) + 'px';
+  styles.style.top = (open ? 60 : 60) + 'px';
+}
+if (localStorage.getItem('exc-collapsed')) document.body.classList.add('collapsed');
+
+/* ---------- boot ---------- */
+paintTitle();
+renderRail();
+placeStylePanel();
+saveB();
+setTool('select');
+new ResizeObserver(() => resize()).observe(wrap);
+resize();
+
+</script>
+</body>
+</html>
