@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oura S-1 Model</title>
+<meta name="description" content="A driver-based model of Oura Inc. built from its September 2026 Form S-1: business drivers, unit economics, financials, DCF and comparables.">
+<meta property="og:title" content="Oura S-1 Model">
+<meta property="og:description" content="Driver-based model built from Oura's Form S-1. Business drivers, unit economics, financials, DCF and comparables. Every assumption editable.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<style>
+  :root{
+    --bg:#f5f6f8; --panel:#ffffff; --ink:#1b222b; --muted:#717b87; --faint:#9aa3ae;
+    --line:#e7eaef; --line2:#eef1f5; --accent:#2563eb; --accent-soft:#eef3ff;
+    --teal:#0f9d8c; --good:#1f9d57; --warn:#c2410c; --gold:#b7791f;
+    --shadow:0 1px 2px rgba(20,30,45,.04),0 2px 8px rgba(20,30,45,.04);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums}
+  /* top bar */
+  .top{height:54px;display:flex;align-items:center;gap:18px;padding:0 20px;background:var(--panel);
+    border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  .brand{font-weight:700;font-size:15px;letter-spacing:-.2px;color:inherit;text-decoration:none}
+  .brand:hover{color:var(--accent)}
+  .brand small{font-weight:500;color:var(--muted);margin-left:8px;font-size:12px}
+  .company{margin-left:2px;padding:5px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:12px;color:var(--ink)}
+  .scenarios{margin-left:auto;display:flex;gap:6px;align-items:center}
+  .scenarios span{color:var(--faint);font-size:11px;margin-right:2px;text-transform:uppercase;letter-spacing:.5px}
+  .sbtn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:5px 11px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:500}
+  .sbtn:hover{border-color:#cdd4dd;background:#fafbfc}
+  .sbtn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .sbtn.primary[disabled]{background:#9bb7f5;border-color:#9bb7f5}
+  .sbtn.ghost{color:var(--muted)}
+  .sbtn[disabled]{opacity:.45;cursor:default}
+  .scnsel{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .scnsel button{border:0;border-right:1px solid var(--line);background:#fff;padding:6px 13px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)}
+  .scnsel button:last-child{border-right:0}
+  .scnsel button:hover{background:#f7f9fc}
+  .scnsel button.active{background:var(--accent);color:#fff}
+  .dirty{font-size:11px;font-weight:600;margin:0 2px;white-space:nowrap}
+  .dirty.on{color:var(--warn)} .dirty.off{color:var(--good)}
+  /* layout */
+  .app{display:grid;grid-template-columns:296px 1fr 326px;height:calc(100vh - 54px)}
+  .rail{overflow-y:auto;background:var(--panel)}
+  .rail.left{border-right:1px solid var(--line)}
+  .rail.right{border-left:1px solid var(--line)}
+  .center{overflow-y:auto;padding:0}
+  .rail-head{padding:14px 16px 8px;font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--faint);position:sticky;top:0;background:var(--panel);z-index:5}
+  /* assumption groups */
+  details.grp{border-bottom:1px solid var(--line2)}
+  details.grp>summary{list-style:none;cursor:pointer;padding:9px 16px;font-weight:600;font-size:12px;color:var(--ink);display:flex;align-items:center;gap:7px;user-select:none}
+  details.grp>summary::-webkit-details-marker{display:none}
+  details.grp>summary .chev{color:var(--faint);transition:transform .15s;font-size:10px}
+  details.grp[open]>summary .chev{transform:rotate(90deg)}
+  details.grp>summary .rel{margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:0}
+  details.grp.relevant>summary .rel{opacity:1}
+  details.grp.relevant>summary{color:var(--accent)}
+  .grp-body{padding:2px 16px 12px}
+  .inp{margin:8px 0}
+  .inp label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px}
+  .inwrap{display:flex;align-items:center;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:#fcfcfd}
+  .inwrap:focus-within{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
+  .inwrap input{flex:1;border:0;background:transparent;padding:6px 8px;font-size:12.5px;color:var(--ink);width:100%;outline:none;font-variant-numeric:tabular-nums}
+  .inwrap .unit{padding:0 9px;color:var(--faint);font-size:11px;border-left:1px solid var(--line)}
+  .inp .lab{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+  .inp .lab label{margin:0}
+  .inp .info{margin-left:auto;width:15px;height:15px;border-radius:50%;border:1px solid var(--line);color:var(--faint);font-size:10px;line-height:13px;text-align:center;cursor:pointer;flex:none;font-style:italic;font-family:Georgia,'Times New Roman',serif}
+  .inp .info:hover{border-color:var(--accent);color:var(--accent)}
+  .inp .info.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .rat{display:none;margin:5px 0 2px;padding:8px 10px;background:#f7f9fc;border:1px solid var(--line2);border-radius:7px;font-size:11px;color:var(--muted);line-height:1.5;cursor:text}
+  .rat.show{display:block}
+  .rat .edit-hint{display:block;font-size:9.5px;color:var(--faint);margin-top:6px}
+  .rat .empty{font-style:italic;color:var(--faint)}
+  .rat textarea{width:100%;min-height:64px;border:1px solid var(--accent);border-radius:6px;padding:6px;font:inherit;font-size:11px;color:var(--ink);line-height:1.5;background:#fff;outline:none}
+  /* center / tabs */
+  .tabbar{display:flex;gap:2px;padding:12px 22px 0;position:sticky;top:0;background:var(--bg);z-index:6;border-bottom:1px solid var(--line)}
+  .tab{padding:9px 16px;border:0;background:transparent;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab:hover{color:var(--ink)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .body{padding:20px 22px 60px;max-width:760px}
+  h2.sec{font-size:15px;margin:4px 0 2px;letter-spacing:-.2px}
+  p.lede{color:var(--muted);margin:0 0 16px;font-size:12.5px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 20px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px;box-shadow:var(--shadow)}
+  .kpi .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--faint);margin-bottom:5px}
+  .kpi .v{font-size:19px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:11px;color:var(--muted);margin-top:2px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:16px 0;box-shadow:var(--shadow)}
+  .card h3{margin:0 0 12px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .card h3 .pill{font-size:10px;font-weight:600;color:var(--muted);background:#f1f3f6;padding:2px 7px;border-radius:20px;letter-spacing:.3px}
+  table.t{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  table.t th,table.t td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line2);font-size:12px}
+  table.t th:first-child,table.t td:first-child{text-align:left;color:var(--ink)}
+  table.t tr:last-child td{border-bottom:0}
+  table.t td{color:#33404e}
+  table.t tr.tot td,table.t tr.tot th{font-weight:700;border-top:2px solid var(--line);color:var(--ink)}
+  table.t .hd td{color:var(--faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+  table.t .muted td{color:var(--muted)}
+  /* bars */
+  .bars{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  .bar-row{display:grid;grid-template-columns:96px 1fr 78px;align-items:center;gap:10px}
+  .bar-label{font-size:12px;color:var(--ink)}
+  .bar-track{height:16px;background:#f0f2f5;border-radius:5px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:5px}
+  .bar-val{font-size:12px;text-align:right;font-variant-numeric:tabular-nums;color:#33404e}
+  .chart{width:100%;height:auto;display:block}
+  .legend{display:flex;gap:16px;margin-top:8px;font-size:11.5px;color:var(--muted)}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .funnel{display:flex;flex-direction:column;gap:4px}
+  .fstep{display:flex;justify-content:space-between;align-items:center;padding:7px 11px;border-radius:7px;font-size:12px}
+  .fstep .fl{color:#33404e}.fstep .fv{font-weight:600;font-variant-numeric:tabular-nums}
+  /* right rail notes */
+  .takeaways{padding:6px 16px 4px}
+  .takeaways ul{margin:0;padding-left:16px}
+  .takeaways li{margin:7px 0;font-size:12.5px;color:#33404e}
+  .takeaways li b{color:var(--ink)}
+  .notes-block{padding:8px 16px 20px}
+  .notes-block label{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);display:flex;align-items:center;gap:8px;margin:10px 0 6px}
+  .notes-block textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:9px;padding:10px;font:inherit;font-size:12.5px;resize:vertical;background:#fcfcfd;color:var(--ink);line-height:1.5}
+  .notes-block textarea:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
+  .saved{font-size:10.5px;color:var(--good);opacity:0;transition:opacity .3s;font-weight:600}
+  .saved.show{opacity:1}
+  .flag{color:var(--warn)} .ok{color:var(--good)}
+  .disclaimer{font-size:11px;color:var(--faint);margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+  p.note{font-size:11.5px;color:var(--muted);margin:11px 0 0;line-height:1.55}
+  .src{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+  <div class="top">
+    <a class="brand" href="../" title="All projects">&#8592; Financial Dashboards<small>driver-based modelling</small></a>
+    <select class="company" id="company"><option>Company</option></select>
+    <div class="scenarios">
+      <span>Scenario</span>
+      <div class="scnsel" id="scnsel">
+        <button data-scn="base">Base</button>
+        <button data-scn="bull">Bull</button>
+        <button data-scn="bear">Bear</button>
+      </div>
+      <span class="dirty off" id="dirty">● Saved</span>
+      <button class="sbtn" id="btnRevert" title="Discard edits since your last save-down">Revert</button>
+      <button class="sbtn primary" id="btnSave" title="Make the current assumptions the new revert point">Save down</button>
+      <button class="sbtn ghost" id="btnReset" title="Reset this scenario to its template defaults">Reset</button>
+    </div>
+  </div>
+  <div class="app">
+    <aside class="rail left"><div class="rail-head">Assumptions</div><div id="inputs"></div></aside>
+    <main class="center">
+      <div class="tabbar" id="tabbar"></div>
+      <div class="body" id="body"></div>
+    </main>
+    <aside class="rail right">
+      <div class="rail-head" id="notesHead">Notes &amp; Takeaways</div>
+      <div class="takeaways" id="takeaways"></div>
+      <div class="notes-block">
+        <label>Your notes <span class="saved" id="saved">saved</span></label>
+        <textarea id="notes" placeholder="Add your own commentary for this tab. Auto-saves locally."></textarea>
+      </div>
+    </aside>
+  </div>
+
+<script>
+/* ============================================================
+   REUSABLE SHELL: a model = { id, name, groups, defaults, presets, compute, tabs }
+   Add another company by defining MODELS.<id> with the same shape.
+   ============================================================ */
+
+// ---- formatting helpers ----
+const money = v => { const n=Math.abs(v), s=v<0?'-':''; if(n>=1e9) return s+'$'+(n/1e9).toFixed(2)+'B'; if(n>=1e6) return s+'$'+(n/1e6).toFixed(1)+'M'; return s+'$'+Math.round(n).toLocaleString(); };
+const money0 = v => '$'+Math.round(v).toLocaleString();
+const int = v => Math.round(v).toLocaleString();
+const pct = v => (Math.round(v*1000)/10)+'%';
+const xx  = v => (isFinite(v)? v.toFixed(1):'∞')+'x';
+
+// ===== BEGIN MODEL — authored per build (see the financial-dashboard skill) =====
+const MODELS = {};
+let ACTIVE_COMPANY = null;
+/* ============================================================================
+   OURA INC. (Nasdaq: OURA) — driver-based model off the Form S-1 filed 3 Sep 2026
+   All figures $ millions unless stated. Fiscal year ends 30 September.
+   ============================================================================ */
+
+// ---------- local formatters (shell's money() expects raw $; we work in $M) ----------
+const mm  = v => { const n=Math.abs(v), s=v<0?'-':''; return n>=1000 ? s+'$'+(n/1000).toFixed(2)+'B' : s+'$'+n.toFixed(0)+'M'; };
+const mm1 = v => { const n=Math.abs(v), s=v<0?'-':''; return n>=1000 ? s+'$'+(n/1000).toFixed(2)+'B' : s+'$'+n.toFixed(1)+'M'; };
+const d0  = v => '$'+Math.round(v).toLocaleString();
+const d2  = v => '$'+v.toFixed(2);
+const p0  = v => (v*100).toFixed(0)+'%';
+const p1  = v => (v*100).toFixed(1)+'%';
+const u1  = v => v.toFixed(1)+'M';
+const u2  = v => v.toFixed(2)+'M';
+const mult= v => (isFinite(v)&&v>0 ? v.toFixed(1) : 'nm')+'x';
+
+// ---------- chart helpers (annual series, not the shell's month grid) ----------
+const CLR = {hw:'#2563eb', mem:'#0f9d8c', line:'#b7791f', neg:'#c2410c', grey:'#9aa3ae', pur:'#7c5cbf'};
+
+function colBars(labels, series, fmt, opts){
+  opts = opts||{};
+  const W=580, H=opts.h||210, P=46, RP=10, TP=14, BP=26;
+  const n=labels.length, k=series.length;
+  const stack = !!opts.stack;
+  const tot = stack ? labels.map((_,i)=>series.reduce((s,x)=>s+x.data[i],0)) : null;
+  const allv = stack ? tot : series.flatMap(s=>s.data);
+  let max=Math.max(...allv,0), min=Math.min(...allv,0);
+  if(max===min) max=min+1; const span=max-min;
+  const y=v=>TP+(H-TP-BP)-((v-min)/span)*(H-TP-BP);
+  const slotW=(W-P-RP)/n, pad=slotW*0.18, bw=stack?(slotW-2*pad):((slotW-2*pad)/k);
+  const grid=[max,(max+min)/2,min].map(v=>`<line x1="${P}" y1="${y(v).toFixed(1)}" x2="${W-RP}" y2="${y(v).toFixed(1)}" stroke="#eef1f5"/><text x="${P-6}" y="${(y(v)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="#9aa3ae">${fmt(v)}</text>`).join('');
+  let bars='';
+  labels.forEach((lb,i)=>{
+    const x0=P+i*slotW+pad;
+    if(stack){
+      let acc=0;
+      series.forEach(s=>{ const v=s.data[i]; const yTop=y(acc+v), yBot=y(acc);
+        bars+=`<rect x="${x0.toFixed(1)}" y="${yTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0,yBot-yTop).toFixed(1)}" fill="${s.color}" rx="1.5"/>`; acc+=v; });
+      if(opts.labelTotals) bars+=`<text x="${(x0+bw/2).toFixed(1)}" y="${(y(acc)-4).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="600" fill="#33404e">${fmt(acc)}</text>`;
+    } else {
+      series.forEach((s,j)=>{ const v=s.data[i]; const yTop=y(Math.max(v,0)), yBot=y(Math.min(v,0));
+        bars+=`<rect x="${(x0+j*bw).toFixed(1)}" y="${yTop.toFixed(1)}" width="${(bw*0.86).toFixed(1)}" height="${Math.max(1,yBot-yTop).toFixed(1)}" fill="${s.color}" rx="1.5"/>`; });
+    }
+  });
+  const xl=labels.map((lb,i)=>`<text x="${(P+i*slotW+slotW/2).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="#9aa3ae">${lb}</text>`).join('');
+  const zero=(min<0)?`<line x1="${P}" y1="${y(0).toFixed(1)}" x2="${W-RP}" y2="${y(0).toFixed(1)}" stroke="#cbd2da"/>`:'';
+  const leg=opts.noLegend?'':`<div class="legend">${series.map(s=>`<span><i style="background:${s.color}"></i>${s.label}</span>`).join('')}</div>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart">${grid}${zero}${bars}${xl}</svg>${leg}`;
+}
+
+function lineYr(labels, series, fmt, opts){
+  opts=opts||{};
+  const W=580,H=opts.h||200,P=46,RP=10,TP=14,BP=26;
+  const n=labels.length;
+  const all=series.flatMap(s=>s.data.filter(v=>v!==null&&isFinite(v)));
+  let max=Math.max(...all), min=opts.zero?Math.min(...all,0):Math.min(...all);
+  if(max===min) max=min+1; const pad=(max-min)*0.08; max+=pad; min-=pad; const span=max-min;
+  const x=i=>P+(n===1?0:i*(W-P-RP)/(n-1)), y=v=>TP+(H-TP-BP)-((v-min)/span)*(H-TP-BP);
+  const grid=[max,(max+min)/2,min].map(v=>`<line x1="${P}" y1="${y(v).toFixed(1)}" x2="${W-RP}" y2="${y(v).toFixed(1)}" stroke="#eef1f5"/><text x="${P-6}" y="${(y(v)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="#9aa3ae">${fmt(v)}</text>`).join('');
+  const lines=series.map(s=>{
+    const pts=s.data.map((v,i)=>v===null?null:x(i).toFixed(1)+','+y(v).toFixed(1)).filter(Boolean).join(' ');
+    const dots=s.data.map((v,i)=>v===null?'':`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.6" fill="${s.color}"/>`).join('');
+    return `<polyline fill="none" stroke="${s.color}" stroke-width="2" stroke-dasharray="${s.dash||''}" points="${pts}"/>${dots}`;
+  }).join('');
+  const xl=labels.map((lb,i)=>`<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="#9aa3ae">${lb}</text>`).join('');
+  const leg=opts.noLegend?'':`<div class="legend">${series.map(s=>`<span><i style="background:${s.color}"></i>${s.label}</span>`).join('')}</div>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart">${grid}${lines}${xl}</svg>${leg}`;
+}
+
+function fieldChart(rows, refs, fmt){
+  const W=580, rowH=30, TP=40, BP=30, H=TP+rows.length*rowH+BP, P=168, RP=14;
+  const allv=rows.flatMap(r=>[r.lo,r.hi]).concat(refs.map(r=>r.v));
+  let min=Math.min(...allv)*0.9, max=Math.max(...allv)*1.05;
+  const x=v=>P+((v-min)/(max-min))*(W-P-RP);
+  const ticks=[0,0.25,0.5,0.75,1].map(f=>{const v=min+(max-min)*f;
+    return `<line x1="${x(v).toFixed(1)}" y1="${TP-4}" x2="${x(v).toFixed(1)}" y2="${H-BP+4}" stroke="#eef1f5"/><text x="${x(v).toFixed(1)}" y="${H-BP+17}" text-anchor="middle" font-size="9" fill="#9aa3ae">${fmt(v)}</text>`;}).join('');
+  const bars=rows.map((r,i)=>{
+    const yy=TP+i*rowH+6, h=15;
+    const mid=(r.lo+r.hi)/2;
+    return `<text x="${P-10}" y="${(yy+11).toFixed(1)}" text-anchor="end" font-size="10.5" fill="#33404e">${r.label}</text>`
+      +`<rect x="${x(r.lo).toFixed(1)}" y="${yy}" width="${Math.max(2,x(r.hi)-x(r.lo)).toFixed(1)}" height="${h}" fill="${r.color||'#2563eb'}" opacity="0.82" rx="3"/>`
+      +`<text x="${(x(r.lo)-4).toFixed(1)}" y="${(yy+11).toFixed(1)}" text-anchor="end" font-size="8.5" fill="#717b87">${fmt(r.lo)}</text>`
+      +`<text x="${(x(r.hi)+4).toFixed(1)}" y="${(yy+11).toFixed(1)}" font-size="8.5" fill="#717b87">${fmt(r.hi)}</text>`;
+  }).join('');
+  const lines=refs.map((r,i)=>`<line x1="${x(r.v).toFixed(1)}" y1="${TP-24+i*12}" x2="${x(r.v).toFixed(1)}" y2="${H-BP+4}" stroke="${r.color}" stroke-width="1.4" stroke-dasharray="4 3"/>`
+    +`<text x="${x(r.v).toFixed(1)}" y="${TP-28+i*12}" text-anchor="middle" font-size="9" font-weight="600" fill="${r.color}">${r.label}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart">${ticks}${lines}${bars}</svg>`;
+}
+
+// ---------- historical actuals from the S-1 ($M; units and members in millions) ----------
+const H = {
+  fy24:  {lbl:'FY2024',  hw:331.203,  mem:75.548,  rev:406.751,  cogs:142.657, gp:264.094, sm:108.410, rd:90.596,  ga:51.648,  opex:250.654, ebit:13.440, ni:3.649,  da:17.405, sbc:6.127, adjE:36.972, units:1.0, memEnd:1.3, rpu:332, repeat:0.05, gm:0.6493},
+  fy25:  {lbl:'FY2025',  hw:749.393,  mem:158.463, rev:907.856,  cogs:436.844, gp:471.012, sm:202.217, rd:141.957, ga:81.506,  opex:425.680, ebit:45.332, ni:0.012,  da:23.285, sbc:6.249, adjE:74.866, units:2.3, memEnd:2.9, rpu:326, repeat:0.09, gm:0.5188},
+  n9m25: {lbl:'9M FY25', hw:588.726,  mem:108.843, rev:697.569,  cogs:341.544, gp:356.025, sm:140.273, rd:101.078, ga:54.409,  opex:295.760, ebit:60.265, ni:1.573,  da:17.310, sbc:5.930, adjE:83.505, units:1.8, memEnd:2.5, rpu:null,repeat:null,gm:0.5104},
+  n9m26: {lbl:'9M FY26', hw:973.980,  mem:240.526, rev:1214.506, cogs:552.339, gp:662.167, sm:257.858, rd:206.800, ga:126.321, opex:590.979, ebit:71.188, ni:60.768, da:25.455, sbc:10.007,adjE:106.650,units:3.1, memEnd:5.0, rpu:311, repeat:0.11, gm:0.5452},
+};
+H.ttm = {lbl:'LTM Jun-26',
+  hw:H.fy25.hw+H.n9m26.hw-H.n9m25.hw, mem:H.fy25.mem+H.n9m26.mem-H.n9m25.mem,
+  rev:H.fy25.rev+H.n9m26.rev-H.n9m25.rev, cogs:H.fy25.cogs+H.n9m26.cogs-H.n9m25.cogs,
+  gp:H.fy25.gp+H.n9m26.gp-H.n9m25.gp, sm:H.fy25.sm+H.n9m26.sm-H.n9m25.sm,
+  rd:H.fy25.rd+H.n9m26.rd-H.n9m25.rd, ga:H.fy25.ga+H.n9m26.ga-H.n9m25.ga,
+  opex:H.fy25.opex+H.n9m26.opex-H.n9m25.opex, ebit:H.fy25.ebit+H.n9m26.ebit-H.n9m25.ebit,
+  ni:H.fy25.ni+H.n9m26.ni-H.n9m25.ni, da:H.fy25.da+H.n9m26.da-H.n9m25.da,
+  sbc:H.fy25.sbc+H.n9m26.sbc-H.n9m25.sbc, adjE:H.fy25.adjE+H.n9m26.adjE-H.n9m25.adjE,
+  units:3.6, memEnd:5.0, rpu:null, repeat:null};
+H.ttm.gm = H.ttm.gp/H.ttm.rev;
+
+// balance-sheet / cash-flow anchors at 30 Jun 2026 ($M)
+const BS = {cash:371.764, debt:380.135, revolver:375.0, postRepayDebt:355.135, defRevCur:137.034,
+            inv:108.942, ar:157.387, ap:82.907, ta:1063.188, tl:1181.171, prefCarry:1499.751,
+            capex9m:66.240, cfo9m:328.008, prefSh:136.767173, commonSh:9.692960, opts:10.915556, rsus:17.759724};
+
+// trading comparables — market data as at 7 Sep 2026 (stockanalysis.com)
+const COMPS = [
+  {n:'Garmin',          t:'GRMN', ev:49280, rev:7670, ebitda:2310, g:0.135, gm:0.601, bucket:'Wearables & consumer hardware'},
+  {n:'SharkNinja',      t:'SN',   ev:24560, rev:6910, ebitda:1110, g:0.175, gm:0.489, bucket:'Wearables & consumer hardware'},
+  {n:'Peloton',         t:'PTON', ev:2870,  rev:2450, ebitda:252,  g:-0.018,gm:0.526, bucket:'Wearables & consumer hardware'},
+  {n:'DexCom',          t:'DXCM', ev:32620, rev:4970, ebitda:1400, g:0.155, gm:0.625, bucket:'Connected health & biosensors'},
+  {n:'iRhythm',         t:'IRTC', ev:4190,  rev:825,  ebitda:17.7, g:0.256, gm:0.715, bucket:'Connected health & biosensors'},
+  {n:'Hims & Hers',     t:'HIMS', ev:7170,  rev:2580, ebitda:-10.2,g:0.280, gm:0.695, bucket:'Connected health & biosensors'},
+  {n:'On Holding',      t:'ONON', ev:8520,  rev:3990, ebitda:607,  g:0.185, gm:0.648, bucket:'High-growth consumer platforms'},
+  {n:'Duolingo',        t:'DUOL', ev:6000,  rev:1150, ebitda:179,  g:0.294, gm:0.727, bucket:'High-growth consumer platforms'},
+];
+const PRECEDENT = {n:'Masimo / Danaher', date:'Jun 2026', ev:9780, evs:6.28, evebitda:26.61};
+const OURA = {
+  id:'oura', name:'Oura Inc. (Nasdaq: OURA)',
+
+  /* ---------------------------------------------------------------- inputs */
+  groups:[
+    {label:'Rings sold & pricing', tabs:['drivers','unit','fins','dcf'], inputs:[
+      {id:'units26',   label:'FY26E rings sold',            type:'int',  step:0.1, unit:'m units'},
+      {id:'unitG27',   label:'FY27E unit growth',           type:'pct',  step:1},
+      {id:'unitGterm', label:'FY35E unit growth (fade to)', type:'pct',  step:0.5},
+      {id:'rpu26',     label:'FY26E revenue per ring',      type:'money',step:5,   unit:'$'},
+      {id:'rpuDrift',  label:'RPU drift p.a.',              type:'pct',  step:0.5},
+    ]},
+    {label:'Members & membership', tabs:['drivers','unit','fins','dcf'], inputs:[
+      {id:'convRate',  label:'Ring → paid member conversion',type:'pct', step:1},
+      {id:'repeat26',  label:'FY26E repeat share of rings',  type:'pct', step:1},
+      {id:'repeatDrift',label:'Repeat share, p.p. p.a.',     type:'pct', step:0.25},
+      {id:'retention', label:'FY26E 12-mo member retention', type:'pct', step:1},
+      {id:'retDrift',  label:'Retention gain, p.p. p.a.',    type:'pct', step:0.1},
+      {id:'arpu26',    label:'FY26E membership ARPU',        type:'money',step:1,  unit:'$/yr'},
+      {id:'arpuG',     label:'ARPU growth p.a.',             type:'pct', step:0.5},
+    ]},
+    {label:'Margin engine', tabs:['unit','fins','dcf'], inputs:[
+      {id:'hwGM26',    label:'FY26E hardware gross margin',  type:'pct', step:0.5},
+      {id:'hwGMterm',  label:'FY35E hardware gross margin',  type:'pct', step:0.5},
+      {id:'memGM',     label:'Membership gross margin',      type:'pct', step:0.5},
+    ]},
+    {label:'Operating cost engine', tabs:['fins','dcf'], inputs:[
+      {id:'sm26',      label:'FY26E S&M % of revenue',       type:'pct', step:0.5},
+      {id:'smTerm',    label:'FY35E S&M % of revenue',       type:'pct', step:0.5},
+      {id:'rd26',      label:'FY26E R&D % of revenue',       type:'pct', step:0.5},
+      {id:'rdTerm',    label:'FY35E R&D % of revenue',       type:'pct', step:0.5},
+      {id:'ga26',      label:'FY26E G&A % of revenue',       type:'pct', step:0.5},
+      {id:'gaTerm',    label:'FY35E G&A % of revenue',       type:'pct', step:0.5},
+      {id:'sbcFwd',    label:'FY27E SBC % of revenue',       type:'pct', step:0.5},
+      {id:'sbcTerm',   label:'FY35E SBC % of revenue',       type:'pct', step:0.5},
+    ]},
+    {label:'Cash flow & capital', tabs:['dcf','unit'], inputs:[
+      {id:'taxRate',   label:'Normalised cash tax rate',     type:'pct', step:1},
+      {id:'daPct',     label:'D&A % of revenue',             type:'pct', step:0.1},
+      {id:'capexPct',  label:'Capex % of revenue',           type:'pct', step:0.1},
+      {id:'nwcPct',    label:'Δ NWC % of Δ revenue',         type:'pct', step:1},
+      {id:'netDebt',   label:'Net debt at 30-Jun-26',        type:'money',step:5,  unit:'$m'},
+      {id:'shares',    label:'Diluted shares',               type:'int', step:1,   unit:'m'},
+    ]},
+    {label:'Discounting & terminal', tabs:['dcf','val'], inputs:[
+      {id:'wacc',      label:'WACC',                         type:'pct', step:0.25},
+      {id:'tgr',       label:'Terminal growth (perpetuity)',  type:'pct', step:0.25},
+      {id:'exitMult',  label:'Terminal EV / EBITDA',         type:'int', step:0.5, unit:'x'},
+      {id:'ggWeight',  label:'Weight on perpetuity method',  type:'pct', step:5},
+    ]},
+    {label:'Comparable-company multiples', tabs:['val'], inputs:[
+      {id:'mRevLo',    label:'EV / LTM revenue — low',       type:'int', step:0.5, unit:'x'},
+      {id:'mRevHi',    label:'EV / LTM revenue — high',      type:'int', step:0.5, unit:'x'},
+      {id:'mFwdLo',    label:'EV / FY27E revenue — low',     type:'int', step:0.25,unit:'x'},
+      {id:'mFwdHi',    label:'EV / FY27E revenue — high',    type:'int', step:0.25,unit:'x'},
+      {id:'mEbLo',     label:'EV / FY29E EBITDA — low',      type:'int', step:1,   unit:'x'},
+      {id:'mEbHi',     label:'EV / FY29E EBITDA — high',     type:'int', step:1,   unit:'x'},
+    ]},
+    {label:'Acquisition efficiency', tabs:['unit'], inputs:[
+      {id:'smAcqShare',label:'S&M that is member acquisition',type:'pct',step:5},
+      {id:'organic',   label:'Members acquired organically',  type:'pct',step:5},
+    ]},
+  ],
+
+  /* ------------------------------------------------------------- defaults */
+  defaults:{
+    units26:4.0, unitG27:0.32, unitGterm:0.04, rpu26:306, rpuDrift:-0.01,
+    convRate:0.90, repeat26:0.11, repeatDrift:0.015, retention:0.85, retDrift:0.004,
+    arpu26:78, arpuG:0.025,
+    hwGM26:0.46, hwGMterm:0.50, memGM:0.89,
+    sm26:0.22, smTerm:0.175, rd26:0.18, rdTerm:0.13, ga26:0.11, gaTerm:0.07,
+    sbcFwd:0.05, sbcTerm:0.025,
+    taxRate:0.24, daPct:0.022, capexPct:0.035, nwcPct:-0.04, netDebt:8.4, shares:175.2,
+    wacc:0.105, tgr:0.03, exitMult:16, ggWeight:0.5,
+    mRevLo:7.5, mRevHi:13, mFwdLo:5.5, mFwdHi:9.5, mEbLo:22, mEbHi:34,
+    smAcqShare:0.75, organic:0.40,
+  },
+
+  presets:{
+    bull:{ unitG27:0.40, unitGterm:0.055, rpu26:312, rpuDrift:-0.005, retention:0.87, retDrift:0.007,
+           arpu26:80, arpuG:0.035, hwGMterm:0.53, smTerm:0.155, rdTerm:0.115, gaTerm:0.06,
+           sbcFwd:0.04, sbcTerm:0.02, wacc:0.10, tgr:0.0325, exitMult:18,
+           mRevLo:10.5, mRevHi:16, mFwdLo:7.5, mFwdHi:12, mEbLo:28, mEbHi:42 },
+    bear:{ unitG27:0.18, unitGterm:0.01, rpu26:296, rpuDrift:-0.025, retention:0.82, retDrift:0.0,
+           arpu26:75, arpuG:0.01, hwGM26:0.43, hwGMterm:0.45, smTerm:0.20, rdTerm:0.15, gaTerm:0.085,
+           sbcFwd:0.065, sbcTerm:0.04, wacc:0.125, tgr:0.02, exitMult:11,
+           mRevLo:4, mRevHi:7.5, mFwdLo:3.5, mFwdHi:6, mEbLo:14, mEbHi:22 },
+  },
+
+  /* ------------------------------------------------------------ rationale */
+  notes:{
+    units26:'S-1: 3.1m rings in 9M FY26 and 3.6m over the twelve months to 30 Jun 26. Q4 FY25 was 0.5m; a Q4 FY26 at roughly +75% gives ~0.9m, so ~4.0m for the year. Rings Sold is net of returns, warranty replacements and web exchanges.',
+    unitG27:'FY26E growth is ~74%. Fading hard from there: FY25 grew 131% and 9M FY26 grew 75%, so the deceleration is already visible in the filing. 32% assumes Ring 5 carries a full year plus continued door and market expansion (70 new retail partners and 15 new markets in 9M FY26 alone).',
+    unitGterm:'Where a category leader settles once the wearables market itself is growing rather than being taken. Oura is ~2% of the 212m global units IDC counts, so this is not a share ceiling, it is a maturity assumption.',
+    rpu26:'S-1 discloses RPU of $311 for 9M FY26, $326 in FY25 and $332 in FY24. Ring 5 launched 4 Jun 26 at $399-$499 MSRP versus $349-$499 for Ring 4, but retail mix and promotions pull realised RPU below list.',
+    rpuDrift:'RPU has fallen ~3% a year despite flat-to-higher MSRPs because retail is now 49% of hardware revenue and international mix is rising. A gentle drift assumes mix keeps diluting price roughly as fast as new generations add it.',
+    convRate:'S-1: over 94% of ring activations convert to a paid membership. Trimmed to 90% for the lag between shipment (when revenue and Rings Sold are recognised) and activation. At 90% the member roll-forward lands on the disclosed 2.9m at FY25 and ~5.1m at 30 Jun 26 against 5.0m actual.',
+    repeat26:'Repeat purchases were 5% of rings in FY24, 9% in FY25 and 11% in 9M FY26. Repeat buyers do not add a new member, so this share is stripped out of member additions.',
+    repeatDrift:'The FY23 cohort has bought over 30% more rings since activation and five generations are now in market, so the repeat motion compounds. 1.5 p.p. a year takes repeat to roughly a quarter of units by FY35.',
+    retention:'Weighted-average 12-month paid member retention was ~85% at 30 Jun 26. Cohorts have improved: ~81% FY23, ~85% FY24, ~87% in 9M FY25. The blended figure sits below the newest cohorts because it is weighted across all of them.',
+    retDrift:'Slow improvement as features accrete, roughly a third of the pace cohorts have shown, because the blended book is dominated by newer members. Capped at 92% in the build; a hardware-tethered subscription cannot retain like pure software because losing or breaking the ring ends the relationship.',
+    arpu26:'US pricing is $5.99/month or $69.99/year and 63% of new members start annual. Membership revenue over average paid members annualises to roughly $81 in 9M FY26 and $75 in FY25; $78 is the midpoint and carries some non-core membership services.',
+    arpuG:'Management flags pricing and packaging headroom but has held price since 2021. Modest real uplift only.',
+    hwGM26:'Not disclosed directly. Backed out: 9M FY26 gross profit of $662.2m less membership gross profit (89% of $240.5m) over hardware revenue of $974.0m gives ~46%. Depressed by elevated Ring 4 battery warranty reserves.',
+    hwGMterm:'Warranty normalisation plus volume discounts, dual sourcing and lower-cost manufacturing locations, offset by tariffs and a heavier retail mix. Not a software margin.',
+    memGM:'S-1 discloses 89% membership gross margin for 9M FY26. Hosting and member support are the only real costs against it.',
+    sm26:'9M FY26 S&M was 21.2% of revenue. Full year runs higher because Q4 carries Ring 5 launch spend into a seasonally light revenue quarter (Q1, the holiday quarter, is the heavy one).',
+    smTerm:'Operating leverage from 40% organic acquisition and rising brand awareness (aided awareness went from ~15% in Q1 FY24 to ~38% in Q3 FY26), against the cost of buying share in new international markets.',
+    rd26:'9M FY26 R&D was 17.0% of revenue and grew 105% year on year. Oura is funding new sensing, regulatory clearances and clinical evidence.',
+    rdTerm:'Still heavy for a consumer name. Garmin runs low-teens; the health-claims roadmap keeps Oura above a pure hardware peer.',
+    ga26:'9M FY26 G&A was 10.4% of revenue, up 132% year on year on IPO readiness. Elevated and should not persist at this level.',
+    gaTerm:'Public-company run rate once listing costs are through.',
+    sbcFwd:'The historical opex ratios embed only ~0.8% of revenue of SBC, which is unrepresentative. About 17.8m RSUs vest on the offering. The one-off catch-up charge is excluded as non-recurring, but the ongoing grant run rate is a real cost and is charged here from FY27.',
+    sbcTerm:'Fades toward a mature consumer-hardware level. Garmin runs ~1.5% of revenue; software-led names run far higher.',
+    taxRate:'Blended US and Finland. Reported rates are not usable: FY25 was ~100% and 9M FY26 was 13%, both distorted by the March 2026 reorganisation and valuation allowances.',
+    daPct:'D&A was 2.1% of revenue in 9M FY26. Patents of $109.1m net are the largest amortising asset.',
+    capexPct:'9M FY26 capex was $66.2m, or 5.5% of revenue, inflated by the office purchase completed in July 2026 and the Ring 5 production ramp. Normalised lower.',
+    nwcPct:'Negative working capital: growth is funded by customers. In 9M FY26 accrued liabilities rose $176.5m, deferred revenue $52.4m and customer deposits $29.2m, so operating cash flow of $328.0m dwarfed net income of $60.8m. That gearing decays as growth slows, so this is set well below the historical rate.',
+    netDebt:'Cash of $371.8m against debt of $380.1m at 30 Jun 26, of which $375.0m is drawn revolver. $25m was repaid on 13 Aug 26. Effectively debt free, and IPO proceeds are not modelled here.',
+    shares:'136.8m preferred converting one-for-one, 9.7m common, 10.9m options and ~17.8m RSUs. The Eli Lilly SAFE and the primary offering are not sized in this filing, so the count will move at pricing.',
+    wacc:'Levered beta around 1.25 for consumer health hardware, a risk-free rate near 4.2% and a 5% equity risk premium. Essentially all equity funded.',
+    tgr:'Nominal GDP-ish. Above it and the model is claiming Oura outgrows the economy forever.',
+    exitMult:'Where a scaled, still-growing consumer health platform should trade in ten years. Garmin is on 21x and DexCom 23x today; both grow in the teens.',
+    ggWeight:'Blend of the two terminal methods. Neither is right on its own: perpetuity growth is sensitive to a rate you cannot observe, exit multiple imports today\'s market into 2035.',
+    mRevLo:'Comps trade at 1.2x to 6.6x LTM revenue while growing 13% to 29%. Oura is growing 74%, so the range sits above the set. See the growth-adjusted work on this tab.',
+    mRevHi:'The top of the range is where the reported $16bn IPO target sits on LTM revenue of $1.42bn (11.2x).',
+    mFwdLo:'Forward revenue collapses the growth premium and is the multiple a buy-side desk will actually underwrite on.',
+    mFwdHi:'Upper bound anchored on DexCom and Garmin forward multiples, grossed up for Oura growing four times faster.',
+    mEbLo:'EBITDA multiples on FY29E, by which point the model has Oura at a credible margin. Discounted back three years at the WACC.',
+    mEbHi:'Top of the range reflects the Masimo takeout at 26.6x EV/EBITDA plus a growth premium.',
+    smAcqShare:'Not disclosed. S&M covers brand, retail support and channel programmes as well as member acquisition, so only part of it is true CAC. Flex this to test how hard the day-one payback claim really is.',
+    organic:'S-1: approximately 40% of new members were acquired organically in 9M FY26 through word of mouth and the refer-a-friend programme.',
+  },
+  /* -------------------------------------------------------------- compute */
+  compute(a){
+    const N = 9;                                   // FY27E .. FY35E
+    const lin = (v0,vT,i) => v0 + (vT-v0)*(i/N);   // linear fade, i = 0..N
+    
+    const yrs=[], labels=[];
+    let prevMem = H.fy25.memEnd;                   // 2.9m paid members at FY25 close
+    let prevRev = H.fy25.rev;
+
+    for(let i=0;i<=N;i++){
+      const lbl = 'FY'+(2026+i)+'E'; labels.push(lbl.replace('FY20','FY'));
+      // unit growth for year i (i>=1) fades geometrically from unitG27 at i=1 to unitGterm at i=N
+      const g = i===0 ? null : a.unitG27*Math.pow(a.unitGterm/a.unitG27, (i-1)/(N-1));
+      const u = i===0 ? a.units26 : yrs[i-1].units*(1+g);
+
+      const rpu   = a.rpu26*Math.pow(1+a.rpuDrift, i);
+      const hw    = u*rpu;                                     // $m  (m units x $)
+      const rep   = Math.min(a.repeat26 + a.repeatDrift*i, 0.35);
+      const ret   = Math.min(a.retention + a.retDrift*i, 0.92);
+      const newM  = u*(1-rep)*a.convRate;
+      const churn = prevMem*(1-ret);
+      const memEnd= prevMem*ret + newM;
+      const memAvg= (prevMem+memEnd)/2;
+      const arpu  = a.arpu26*Math.pow(1+a.arpuG, i);
+      const mem   = memAvg*arpu;
+      const rev   = hw + mem;
+
+      const hwGM  = lin(a.hwGM26, a.hwGMterm, i);
+      const gp    = hw*hwGM + mem*a.memGM;
+      const sm    = rev*lin(a.sm26, a.smTerm, i);
+      const rd    = rev*lin(a.rd26, a.rdTerm, i);
+      const ga    = rev*lin(a.ga26, a.gaTerm, i);
+      // historical opex ratios embed ~0.8% of revenue of SBC; step up to a public-company run rate from FY27
+      const sbcRate = i===0 ? 0.008 : a.sbcFwd + (a.sbcTerm-a.sbcFwd)*((i-1)/(N-1));
+      const sbcInc  = rev*Math.max(0, sbcRate - 0.008);
+      const ebit  = gp - sm - rd - ga - sbcInc;
+      const da    = rev*a.daPct;
+      const ebitda= ebit + da;                                  // SBC treated as a cost, as data providers do
+      const adjE  = ebitda + rev*0.008 + sbcInc;                // company definition: add all SBC back
+      const capex = rev*a.capexPct;
+      const dNWC  = (rev - prevRev)*a.nwcPct;
+      const nopat = ebit*(1-a.taxRate);
+      const fcf   = nopat + da - capex - dNWC;
+
+      yrs.push({lbl, i, units:u, g, rpu, hw, rep, ret, newM, churn, memEnd, memAvg, arpu, mem, rev,
+                hwGM, gp, gm:gp/rev, sm, rd, ga, sbcInc, opex:sm+rd+ga+sbcInc, ebit, ebitM:ebit/rev,
+                da, ebitda, ebitdaM:ebitda/rev, adjE, capex, dNWC, nopat, fcf,
+                revG: rev/prevRev - 1, memMix: mem/rev});
+      prevMem = memEnd; prevRev = rev;
+    }
+
+    const y26 = yrs[0], y27 = yrs[1], y29 = yrs[3], yT = yrs[N];
+
+    /* ---- FY26E reconciliation to the 9M actual ---- */
+    const q4 = {rev:y26.rev-H.n9m26.rev, hw:y26.hw-H.n9m26.hw, mem:y26.mem-H.n9m26.mem,
+                ebit:y26.ebit-H.n9m26.ebit, adjE:y26.adjE-H.n9m26.adjE,
+                pyRev:H.fy25.rev-H.n9m25.rev, pyEbit:H.fy25.ebit-H.n9m25.ebit,
+                pyAdjE:H.fy25.adjE-H.n9m25.adjE, pyHw:H.fy25.hw-H.n9m25.hw, pyMem:H.fy25.mem-H.n9m25.mem};
+    q4.g = q4.rev/q4.pyRev - 1;
+
+    /* ---- DCF: valuation date is FY26 year end, mid-year discounting on FY27-FY35 ---- */
+    const dcfAt = w => {
+      let pv=0; const rows=[];
+      for(let i=1;i<=N;i++){ const df=1/Math.pow(1+w, i-0.5); const p=yrs[i].fcf*df; pv+=p;
+        rows.push({lbl:yrs[i].lbl, fcf:yrs[i].fcf, df, pv:p}); }
+      const tvG = w>a.tgr ? yT.fcf*(1+a.tgr)/(w-a.tgr) : NaN;
+      const tvM = yT.ebitda*a.exitMult;
+      const tv  = a.ggWeight*tvG + (1-a.ggWeight)*tvM;
+      const dfT = 1/Math.pow(1+w, N);
+      const pvTV= tv*dfT;
+      const ev  = pv + pvTV;
+      return {rows, pvFcf:pv, tvG, tvM, tv, dfT, pvTV, ev, eq:ev-a.netDebt, ps:(ev-a.netDebt)/a.shares,
+              tvShare:pvTV/ev};
+    };
+    const dcf = dcfAt(a.wacc);
+    const dcfLo = dcfAt(a.wacc+0.015), dcfHi = dcfAt(Math.max(0.04, a.wacc-0.015));
+
+    /* sensitivity: WACC x terminal growth, implied share price */
+    const wRange=[-0.02,-0.01,0,0.01,0.02].map(d=>a.wacc+d);
+    const gRange=[-0.01,-0.005,0,0.005,0.01].map(d=>a.tgr+d);
+    const sens = wRange.map(w=>gRange.map(gg=>{
+      if(w<=gg) return null;
+      const tvG=yT.fcf*(1+gg)/(w-gg), tv=a.ggWeight*tvG+(1-a.ggWeight)*yT.ebitda*a.exitMult;
+      let pv=0; for(let i=1;i<=N;i++) pv+=yrs[i].fcf/Math.pow(1+w,i-0.5);
+      const ev=pv+tv/Math.pow(1+w,N); return (ev-a.netDebt)/a.shares;
+    }));
+
+    /* ---- comps ---- */
+    const comps = COMPS.map(c=>({...c, evs:c.ev/c.rev, eve:c.ebitda>0?c.ev/c.ebitda:null,
+                                 ebitdaM:c.ebitda/c.rev, r40:c.g+c.ebitda/c.rev,
+                                 evsPerG: c.g>0? (c.ev/c.rev)/(c.g*100) : null}));
+    const med = arr => { const v=arr.filter(x=>x!==null&&isFinite(x)).sort((x,y)=>x-y); if(!v.length) return null;
+      const m=Math.floor(v.length/2); return v.length%2?v[m]:(v[m-1]+v[m])/2; };
+    const compStats = {
+      evs: med(comps.map(c=>c.evs)), eve: med(comps.map(c=>c.eve)),
+      g: med(comps.map(c=>c.g)), gm: med(comps.map(c=>c.gm)), em: med(comps.map(c=>c.ebitdaM)),
+      evsPerG: med(comps.map(c=>c.evsPerG)), r40: med(comps.map(c=>c.r40)),
+    };
+
+    /* Oura's own metrics for the regressions: LTM actual, and FY27E forward */
+    const ouraLtm = {rev:H.ttm.rev, ebitda:H.ttm.ebit+H.ttm.da, g:0.74, gm:H.ttm.gm};
+    ouraLtm.ebitdaM = ouraLtm.ebitda/ouraLtm.rev;
+    ouraLtm.r40 = ouraLtm.g + ouraLtm.ebitdaM;
+
+    /* least-squares through the comp set: EV/Sales on growth, and on the rule-of-40 score */
+    const reg = (xs, ys) => { const n=xs.length; const mx=xs.reduce((s,v)=>s+v,0)/n, my=ys.reduce((s,v)=>s+v,0)/n;
+      let num=0, den=0; for(let i=0;i<n;i++){ num+=(xs[i]-mx)*(ys[i]-my); den+=(xs[i]-mx)**2; }
+      const b=den? num/den : 0; return {b, a: my-b*mx}; };
+    const okG = comps.filter(c=>c.g>0);
+    const regG  = reg(okG.map(c=>c.g), okG.map(c=>c.evs));          // slope is NEGATIVE in this set
+    const regR  = reg(comps.map(c=>c.r40), comps.map(c=>c.evs));
+    const impliedR = Math.max(0, regR.a + regR.b*ouraLtm.r40);
+    // growth-adjusted: median EV/Sales per point of revenue growth, applied to Oura's growth
+    const impliedG = compStats.evsPerG * (ouraLtm.g*100);
+    const evGrowthAdj = impliedG*ouraLtm.rev;
+    const evR40       = impliedR*ouraLtm.rev;
+
+    /* ---- football field (EV, $m) ---- */
+    const pvBack = v => v/Math.pow(1+a.wacc, 3);   // FY29E multiple back to today
+    const field = [
+      {label:'DCF (WACC ±1.5 p.p.)',        lo:dcfLo.ev,              hi:dcfHi.ev,              color:'#2563eb'},
+      {label:'EV / LTM revenue',            lo:a.mRevLo*H.ttm.rev,    hi:a.mRevHi*H.ttm.rev,    color:'#0f9d8c'},
+      {label:'EV / FY27E revenue',          lo:a.mFwdLo*y27.rev,      hi:a.mFwdHi*y27.rev,      color:'#0f9d8c'},
+      {label:'EV / FY29E EBITDA (disc.)',   lo:pvBack(a.mEbLo*y29.ebitda), hi:pvBack(a.mEbHi*y29.ebitda), color:'#0f9d8c'},
+      {label:'Growth-adjusted EV/Sales',    lo:evGrowthAdj*0.8,       hi:evGrowthAdj*1.2,       color:'#b7791f'},
+      {label:'Rule-of-40 regression',       lo:evR40*0.8,             hi:evR40*1.2,             color:'#b7791f'},
+      {label:'Precedent: Masimo 6.3x sales',lo:5.3*H.ttm.rev,         hi:7.3*H.ttm.rev,         color:'#7c5cbf'},
+    ];
+    const fieldLo = Math.min(...field.map(f=>f.lo)), fieldHi = Math.max(...field.map(f=>f.hi));
+    const fieldMid = field.reduce((s,f)=>s+(f.lo+f.hi)/2,0)/field.length;
+
+    /* ---- unit economics ---- */
+    const hwGPunit = y26.rpu*y26.hwGM;
+    const cacBlend = (y26.sm*a.smAcqShare)/y26.newM;
+    const cacPaid  = a.organic<1 ? cacBlend/(1-a.organic) : cacBlend;
+    const memGPyr  = y26.arpu*a.memGM;
+    const life     = 1/(1-a.retention);
+    let ltvMem=0; for(let t=0;t<25;t++){ ltvMem += memGPyr*Math.pow(a.retention,t)/Math.pow(1+a.wacc,t+0.5); }
+    const repeatHW = hwGPunit*(a.repeat26/(1-a.repeat26))*Math.min(life,8)/8*1.0;
+    const ltv      = ltvMem + hwGPunit + repeatHW;
+    const ltvCac   = ltv/cacBlend;
+    const dayOne   = hwGPunit - cacBlend;
+
+    return {yrs, labels, y26, y27, y29, yT, N, q4, dcf, dcfLo, dcfHi, sens, wRange, gRange,
+            comps, compStats, ouraLtm, regG, regR, impliedG, impliedR, evGrowthAdj, evR40,
+            field, fieldLo, fieldHi, fieldMid,
+            unit:{hwGPunit, cacBlend, cacPaid, memGPyr, life, ltvMem, repeatHW, ltv, ltvCac, dayOne},
+            H, BS, PRECEDENT};
+  },
+  /* ----------------------------------------------------------------- tabs */
+  tabs:[
+
+  /* ============================== 1. BUSINESS DRIVERS ============================== */
+  {id:'drivers', label:'Business drivers', render(r,a){
+    const h=r.H, y=r.yrs;
+    const fyLbls=['FY24','FY25','FY26E','FY27E','FY28E','FY29E','FY30E'];
+    const hwSeries =[h.fy24.hw, h.fy25.hw, y[0].hw, y[1].hw, y[2].hw, y[3].hw, y[4].hw];
+    const memSeries=[h.fy24.mem,h.fy25.mem,y[0].mem,y[1].mem,y[2].mem,y[3].mem,y[4].mem];
+    const unitsSer =[h.fy24.units,h.fy25.units,y[0].units,y[1].units,y[2].units,y[3].units,y[4].units];
+    const memberSer=[h.fy24.memEnd,h.fy25.memEnd,y[0].memEnd,y[1].memEnd,y[2].memEnd,y[3].memEnd,y[4].memEnd];
+
+    return `
+    <h2 class="sec">What actually drives the business</h2>
+    <p class="lede">Two engines. Rings sold times revenue per ring is the hardware line and the customer-acquisition
+    event. Paid members times ARPU is the annuity that follows it. Everything else is mix and cost.</p>
+
+    ${kpiRow([
+      ['LTM revenue', mm(h.ttm.rev), '+74% (9M FY26 y/y)'],
+      ['Rings sold, LTM', u1(h.ttm.units), '~2% of 212m global wearables'],
+      ['Paid members', u1(h.n9m26.memEnd)+' ', 'at 30 Jun 26, +100% y/y'],
+      ['12-mo retention', p0(a.retention), 'weighted average, all cohorts'],
+    ])}
+
+    <div class="card"><h3>Revenue by segment <span class="pill">actual to FY25, model thereafter</span></h3>
+      ${colBars(fyLbls,[{label:'Hardware',data:hwSeries,color:CLR.hw},{label:'Membership',data:memSeries,color:CLR.mem}],
+                v=>mm(v),{stack:true,labelTotals:true,h:220})}
+      <p class="note">Membership was 19% of revenue in FY24 and 20% in 9M FY26, but it grew 121% against hardware's 65%.
+      The model has it crossing 25% of revenue in FY27E and ${p0(y[9].memMix)} by FY35E. That mix shift is the whole
+      margin story, because membership carries an 89% gross margin against roughly 46% on hardware.</p>
+    </div>
+
+    <div class="card"><h3>Rings sold and paid members <span class="pill">millions</span></h3>
+      ${colBars(fyLbls,[{label:'Rings sold in year',data:unitsSer,color:CLR.hw},{label:'Paid members, year end',data:memberSer,color:CLR.mem}],
+                v=>v.toFixed(1)+'m',{h:200})}
+      <p class="note">Members exceed cumulative rings because over 94% of activations convert and members retain,
+      while a rising share of rings go to people who are already members.</p>
+    </div>
+
+    <div class="card"><h3>Operating metrics as filed</h3>
+      ${table([
+        ['', ['FY2024','FY2025','9M FY25','9M FY26'], 'hd'],
+        ['Rings sold', [u1(h.fy24.units),u1(h.fy25.units),u1(h.n9m25.units),u1(h.n9m26.units)]],
+        ['Paid members, period end', [u1(h.fy24.memEnd),u1(h.fy25.memEnd),u1(h.n9m25.memEnd),u1(h.n9m26.memEnd)]],
+        ['Revenue per ring (RPU)', ['$332','$326','n/d','$311']],
+        ['Repeat share of rings sold', ['5%','9%','n/d','11%']],
+        ['Gross margin', [p1(h.fy24.gm),p1(h.fy25.gm),p1(h.n9m25.gm),p1(h.n9m26.gm)]],
+        ['Opex as % of revenue', [p1(h.fy24.opex/h.fy24.rev),p1(h.fy25.opex/h.fy25.rev),p1(h.n9m25.opex/h.n9m25.rev),p1(h.n9m26.opex/h.n9m26.rev)]],
+        ['Adjusted EBITDA margin', [p1(h.fy24.adjE/h.fy24.rev),p1(h.fy25.adjE/h.fy25.rev),p1(h.n9m25.adjE/h.n9m25.rev),p1(h.n9m26.adjE/h.n9m26.rev)], 'tot'],
+      ])}
+      <p class="note">Read the gross margin line carefully. It fell from 65% to 52% between FY24 and FY25 as retail
+      distribution scaled, then recovered to 55% in 9M FY26 as Ring 4 battery warranty reserves normalised and
+      per-unit manufacturing cost came down. It is not a clean trend.</p>
+    </div>
+
+    <div class="card"><h3>Hardware build: units times price</h3>
+      ${table([
+        ['', ['FY26E','FY27E','FY28E','FY29E','FY30E','FY35E'], 'hd'],
+        ['Rings sold (m)', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>x.units.toFixed(2))],
+        ['  growth', ['', ...[y[1],y[2],y[3],y[4],y[9]].map(x=>p0(x.g))]],
+        ['Revenue per ring', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>d0(x.rpu))],
+        ['Hardware revenue', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>mm(x.hw)), 'tot'],
+      ])}
+    </div>
+
+    <div class="card"><h3>Member roll-forward: where the annuity comes from</h3>
+      ${table([
+        ['', ['FY26E','FY27E','FY28E','FY29E','FY30E','FY35E'], 'hd'],
+        ['Members, opening', [h.fy25.memEnd,y[0].memEnd,y[1].memEnd,y[2].memEnd,y[3].memEnd,y[8].memEnd].map(v=>u1(v))],
+        ['Rings sold', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>u2(x.units))],
+        ['  less repeat purchases', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>'('+u2(x.units*x.rep)+')'), 'muted'],
+        ['  times conversion at '+p0(a.convRate), [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>u2(x.newM)), 'muted'],
+        ['New members added', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>u2(x.newM))],
+        ['Churned members', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>'('+u2(x.churn)+')')],
+        ['Members, closing', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>u1(x.memEnd)), 'tot'],
+        ['Retention applied', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>p1(x.ret)), 'muted'],
+        ['Membership ARPU', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>d0(x.arpu))],
+        ['Membership revenue', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>mm(x.mem)), 'tot'],
+      ])}
+      <p class="note">Churn is applied to the opening base only, so the closing number is the disclosed roll-forward
+      shape rather than a cohort model. At the default conversion of ${p0(a.convRate)} the build lands on 2.99m members
+      at FY25 close against 2.9m reported, and roughly 5.1m at 30 June 26 against 5.0m reported.</p>
+    </div>
+
+    <div class="card"><h3>Mix, and how members are won <span class="pill">9M FY26, as disclosed</span></h3>
+      ${barH([
+        {label:'Retail channel', value:49, color:CLR.hw},
+        {label:'DTC channel', value:51, color:'#7ba4f5'},
+        {label:'United States', value:80, color:CLR.mem},
+        {label:'International', value:20, color:'#63c9bd'},
+        {label:'Organic acquisition', value:40, color:CLR.line},
+        {label:'Paid acquisition', value:60, color:'#dcc38a'},
+      ], v=>v+'%')}
+      <p class="note">Retail is 49% of hardware revenue and international is under 20%, so the two largest levers on
+      the model, geographic expansion and channel mix, pull in opposite directions on price. Oura keeps the full
+      membership economics regardless of where the ring was bought, because every member has to activate directly.</p>
+    </div>
+
+    <div class="card"><h3>Penetration and the addressable set</h3>
+      ${table([
+        ['', ['Figure','Source'], 'hd'],
+        ['Global wearable units, 12m to Jun-26', ['212m','IDC, cited in S-1']],
+        ['Oura rings sold, same period', ['3.6m','S-1']],
+        ['Implied share of units', ['~1.7%','calculated']],
+        ['Serviceable addressable market, 2026', ['$91.3bn','Statista, aggregated in S-1']],
+        ['  fitness trackers', ['$44.9bn',''], 'muted'],
+        ['  health and wellness coaching', ['$22.3bn',''], 'muted'],
+        ['  connected biosensors', ['$13.1bn',''], 'muted'],
+        ['  digital therapeutics', ['$8.4bn',''], 'muted'],
+        ['  digital care management', ['$2.6bn',''], 'muted'],
+        ['Oura LTM revenue against SAM', [p1(h.ttm.rev/91300),'calculated'], 'tot'],
+      ])}
+      <p class="note">The $90bn+ number is a sum of five Statista category estimates assembled by the company, several
+      of which Oura does not sell into today and some of which need regulatory authorisation it does not yet hold.
+      Treat it as a direction of travel, not a market share denominator.</p>
+    </div>
+
+    <div class="card"><h3>Engagement and cohort quality <span class="pill">as disclosed</span></h3>
+      ${table([
+        ['Ring activations converting to paid', ['&gt;94%']],
+        ['DAU to MAU ratio', ['~65%']],
+        ['App opens per day, per member', ['&gt;3.5']],
+        ['New members starting on an annual plan', ['63%']],
+        ['Aided brand awareness, US target audience', ['~15% Q1 FY24 → ~38% Q3 FY26']],
+        ['Retention by cohort', ['~81% FY23 → ~85% FY24 → ~87% 9M FY25']],
+        ['FY23 cohort, additional rings since activation', ['+30%']],
+        ['Members who are women', ['~72%']],
+        ['Members reporting a chronic condition', ['&gt;50%']],
+        ['New members for whom Oura was the first wearable', ['33%']],
+        ['Retail doors', ['~8,400']],
+      ])}
+    </div>
+
+    <div class="disclaimer">Operating metrics, mix percentages and engagement statistics are taken from the Form S-1 filed
+    3 September 2026. Rings sold and paid members are company-defined measures. RPU, hardware gross margin and
+    membership ARPU are not disclosed as such and are derived here from disclosed revenue, unit and margin figures.</div>`;
+  }, takeaways(r,a){ const y=r.yrs; return [
+    `<b>Membership is the whole thesis.</b> It is ${p0(y[0].memMix)} of revenue in FY26E at an 89% gross margin, and the model
+     has it at ${p0(y[9].memMix)} by FY35E. Blended gross margin goes from ${p1(y[0].gm)} to ${p1(y[9].gm)} on mix alone.`,
+    `<b>Growth is decelerating fast, and visibly.</b> Units grew 131% in FY25 and 75% in 9M FY26. The base case fades
+     unit growth from ${p0(a.unitG27)} in FY27E to ${p0(a.unitGterm)} by FY35E.`,
+    `<b>Price is drifting down, not up.</b> RPU went $332, $326, $311 across FY24, FY25 and 9M FY26 even as MSRPs held or
+     rose, because retail is now 49% of hardware revenue. Volume has to carry the hardware line.`,
+    `<b>The retention number is softer than it reads.</b> ~85% weighted average against ~87% for the 9M FY25 cohort. A
+     hardware-tethered subscription ends when the ring does, which caps how software-like this can get.`,
+    `<b>Watch the warranty line.</b> Gross margin fell 13 points between FY24 and FY25 and Ring 4 battery reserves were
+     still weighing on 9M FY26. One bad hardware cohort moves the model more than a year of member growth.`,
+  ];}},
+  /* ============================== 2. UNIT ECONOMICS ============================== */
+  {id:'unit', label:'Unit economics', render(r,a){
+    const u=r.unit, y=r.y26;
+    const retSens=[0.78,0.82,0.85,0.88,0.91].map(ret=>{
+      const gp=y.arpu*a.memGM; let lv=0; for(let t=0;t<25;t++) lv+=gp*Math.pow(ret,t)/Math.pow(1+a.wacc,t+0.5);
+      const tot=lv+u.hwGPunit+u.repeatHW; return {ret, ltv:tot, ratio:tot/u.cacBlend, life:1/(1-ret)};
+    });
+    const payMonths = u.dayOne>=0 ? 0 : Math.ceil(-u.dayOne/(u.memGPyr/12));
+
+    return `
+    <h2 class="sec">One member, from first ring to steady state</h2>
+    <p class="lede">The company's claim is that hardware gross profit recovers customer acquisition cost on day one and
+    the membership is pure annuity on top. Here is that claim built from the numbers, with the assumption it rests on
+    exposed as an input.</p>
+
+    ${kpiRow([
+      ['Hardware GP per ring', d0(u.hwGPunit), d0(y.rpu)+' RPU at '+p0(y.hwGM)+' margin'],
+      ['Blended CAC', d0(u.cacBlend), p0(a.smAcqShare)+' of S&M over new members'],
+      ['Day-one surplus', (u.dayOne>=0?'+':'')+d0(u.dayOne), u.dayOne>=0?'CAC recovered at the till':'payback in ~'+payMonths+' months'],
+      ['LTV / CAC', u.ltvCac.toFixed(1)+'x', d0(u.ltv)+' LTV, '+u.life.toFixed(1)+'yr life'],
+    ])}
+
+    <div class="card"><h3>The acquisition event <span class="pill">FY26E, per ring sold</span></h3>
+      ${table([
+        ['Revenue per ring (RPU)', [d0(y.rpu)]],
+        ['Cost of hardware', ['('+d0(y.rpu*(1-y.hwGM))+')'], 'muted'],
+        ['Hardware gross profit', [d0(u.hwGPunit)], 'tot'],
+        ['Customer acquisition cost', ['('+d0(u.cacBlend)+')']],
+        ['Day-one contribution', [(u.dayOne>=0?'+':'')+d0(u.dayOne)], 'tot'],
+      ])}
+      <p class="note">CAC is derived, not disclosed. Total S&M of ${mm(y.sm)} in FY26E, of which ${p0(a.smAcqShare)} is treated
+      as member acquisition, spread over ${u2(y.newM)} new members. On the ${p0(1-a.organic)} of members who are actually
+      bought rather than referred, the implied cost is ${d0(u.cacPaid)} each, and the day-one surplus on that subset is
+      ${(u.hwGPunit-u.cacPaid>=0?'+':'')+d0(u.hwGPunit-u.cacPaid)}. That is the number to stress, not the blended one.</p>
+    </div>
+
+    <div class="card"><h3>Lifetime value build</h3>
+      ${table([
+        ['', ['Per member'], 'hd'],
+        ['Membership ARPU', [d0(y.arpu)]],
+        ['Membership gross margin', [p0(a.memGM)], 'muted'],
+        ['Membership gross profit per year', [d0(u.memGPyr)]],
+        ['Retention', [p0(a.retention)], 'muted'],
+        ['Implied average life', [u.life.toFixed(1)+' years'], 'muted'],
+        ['Discount rate', [p1(a.wacc)], 'muted'],
+        ['PV of membership gross profit', [d0(u.ltvMem)]],
+        ['Plus initial hardware gross profit', [d0(u.hwGPunit)]],
+        ['Plus repeat ring gross profit', [d0(u.repeatHW)]],
+        ['Lifetime value', [d0(u.ltv)], 'tot'],
+        ['Less CAC', ['('+d0(u.cacBlend)+')']],
+        ['Net value per member', [d0(u.ltv-u.cacBlend)], 'tot'],
+        ['LTV / CAC', [u.ltvCac.toFixed(1)+'x'], 'tot'],
+      ])}
+      <p class="note">Membership gross profit is discounted at the WACC rather than a separate hurdle, so this ties to
+      the DCF. Repeat hardware is deliberately conservative: it credits the repeat rate observed today rather than the
+      full multi-generation upgrade cycle management describes.</p>
+    </div>
+
+    <div class="card"><h3>How much of this rests on retention</h3>
+      ${table([
+        ['12-month retention', ['78%','82%','85%','88%','91%'], 'hd'],
+        ['Implied member life', retSens.map(s=>s.life.toFixed(1)+'y')],
+        ['Lifetime value', retSens.map(s=>d0(s.ltv))],
+        ['LTV / CAC', retSens.map(s=>s.ratio.toFixed(1)+'x'), 'tot'],
+      ])}
+      <p class="note">Retention is the single most convex assumption in the model. Three points of retention move LTV by
+      roughly ${d0(Math.abs(retSens[3].ltv-retSens[2].ltv))} per member, and there are five million of them. Cohorts have improved
+      (81% in FY23 to 87% for the 9M FY25 cohort) but the blended book sits at ~85%.</p>
+    </div>
+
+    <div class="card"><h3>Why this structure is unusual</h3>
+      ${table([
+        ['', ['Oura','Typical consumer subscription'], 'hd'],
+        ['CAC recovered at', [u.dayOne>=0?'point of sale':'month '+payMonths, 'month 6 to 18']],
+        ['Working capital', ['negative, customers fund growth', 'positive']],
+        ['Gross margin on the annuity', [p0(a.memGM), '70% to 85%']],
+        ['Churn trigger', ['ring loss, damage, upgrade lapse', 'card failure, disengagement']],
+        ['Second revenue event', ['repeat ring, '+p0(y.rep)+' of units', 'none']],
+      ])}
+      <p class="note">The hardware sale is not a loss leader, which is what separates Oura from the connected-fitness
+      model that Peloton ran. It is also what makes the business look cheaper than it is on a revenue multiple:
+      ${p0(y.hw/y.rev)} of FY26E revenue is a low-margin, non-recurring hardware line.</p>
+    </div>
+
+    <div class="disclaimer">CAC, hardware gross margin and lifetime value are not disclosed in the S-1 and are derived here.
+    The share of S&M that is genuinely member acquisition is an input with no disclosed anchor, so treat the LTV/CAC
+    ratio as directional. Disclosed inputs: RPU $311 (9M FY26), membership gross margin 89%, retention ~85%,
+    organic acquisition ~40%, conversion over 94%, repeat share 11%.</div>`;
+  }, takeaways(r,a){ const u=r.unit; return [
+    `<b>The day-one payback claim holds, on the blended number.</b> ${d0(u.hwGPunit)} of hardware gross profit against
+     ${d0(u.cacBlend)} of blended CAC leaves ${d0(u.dayOne)} before a single membership dollar.`,
+    `<b>On paid-acquired members it is much tighter.</b> Stripping out the ${p0(a.organic)} who arrive organically, implied CAC
+     is ${d0(u.cacPaid)} and the surplus falls to ${d0(u.hwGPunit-u.cacPaid)}. Word of mouth is doing real financial work here.`,
+    `<b>LTV/CAC of ${u.ltvCac.toFixed(1)}x is strong but retention-levered.</b> Most of the value sits in years three to seven of
+     membership, which no cohort has yet completed.`,
+    `<b>Negative working capital is a genuine asset.</b> Operating cash flow was ${mm(r.BS.cfo9m)} in 9M FY26 against net income
+     of ${mm(r.H.n9m26.ni)}. Deferred revenue, accruals and customer deposits fund the growth.`,
+    `<b>The lever nobody has pulled: price.</b> Membership has been $5.99 a month since 2021 while the feature set has
+     compounded. A ten percent rise flows almost entirely to gross profit.`,
+  ];}},
+
+  /* ============================== 3. FINANCIALS ============================== */
+  {id:'fins', label:'Financials', render(r,a){
+    const h=r.H, y=r.yrs, q=r.q4;
+    const pick=[0,1,2,3,4,9].map(i=>y[i]);
+    const cs = (v,base)=>p1(v/base);
+    const marginLbls=['FY24','FY25','LTM','FY26E','FY27E','FY28E','FY29E','FY30E'];
+    const gmSer =[h.fy24.gm,h.fy25.gm,h.ttm.gm,y[0].gm,y[1].gm,y[2].gm,y[3].gm,y[4].gm].map(v=>v*100);
+    const ebSer =[h.fy24.ebit/h.fy24.rev,h.fy25.ebit/h.fy25.rev,h.ttm.ebit/h.ttm.rev,y[0].ebitM,y[1].ebitM,y[2].ebitM,y[3].ebitM,y[4].ebitM].map(v=>v*100);
+    const adjSer=[h.fy24.adjE/h.fy24.rev,h.fy25.adjE/h.fy25.rev,h.ttm.adjE/h.ttm.rev,y[0].adjE/y[0].rev,y[1].adjE/y[1].rev,y[2].adjE/y[2].rev,y[3].adjE/y[3].rev,y[4].adjE/y[4].rev].map(v=>v*100);
+
+    return `
+    <h2 class="sec">Financials as filed, and the forecast that follows them</h2>
+    <p class="lede">Fiscal year ends 30 September. FY2026 is nine months of audited-basis actuals plus a modelled fourth
+    quarter, so the first thing below is that reconciliation.</p>
+
+    ${kpiRow([
+      ['LTM revenue', mm(h.ttm.rev), 'FY25 plus 9M FY26 less 9M FY25'],
+      ['LTM gross margin', p1(h.ttm.gm), 'vs '+p1(h.fy25.gm)+' in FY25'],
+      ['LTM adj. EBITDA', mm(h.ttm.adjE), p1(h.ttm.adjE/h.ttm.rev)+' margin'],
+      ['LTM net income', mm(h.ttm.ni), 'first meaningful profit'],
+    ])}
+
+    <div class="card"><h3>Income statement as filed <span class="pill">$m</span></h3>
+      ${table([
+        ['', ['FY2024','FY2025','9M FY25','9M FY26','LTM Jun-26'], 'hd'],
+        ['Hardware revenue', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>mm1(x.hw))],
+        ['Membership revenue', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>mm1(x.mem))],
+        ['Total revenue', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>mm1(x.rev)), 'tot'],
+        ['Cost of revenue', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>'('+mm1(x.cogs)+')')],
+        ['Gross profit', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>mm1(x.gp)), 'tot'],
+        ['  gross margin', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>p1(x.gm)), 'muted'],
+        ['Sales and marketing', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>'('+mm1(x.sm)+')')],
+        ['Research and development', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>'('+mm1(x.rd)+')')],
+        ['General and administrative', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>'('+mm1(x.ga)+')')],
+        ['Total operating expenses', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>'('+mm1(x.opex)+')'), 'tot'],
+        ['Income from operations', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>mm1(x.ebit)), 'tot'],
+        ['  operating margin', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>p1(x.ebit/x.rev)), 'muted'],
+        ['Net income', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>mm1(x.ni))],
+        ['Depreciation and amortisation', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>mm1(x.da)), 'muted'],
+        ['Share-based compensation', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>mm1(x.sbc)), 'muted'],
+        ['Adjusted EBITDA (company defined)', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>mm1(x.adjE)), 'tot'],
+        ['  adjusted EBITDA margin', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>p1(x.adjE/x.rev)), 'muted'],
+      ])}
+      <p class="note">FY2025 net income of $12 thousand is not a rounding artefact. Income before tax was $23.6m and the
+      tax provision was $23.6m, an effective rate near 100% driven by the pre-reorganisation Finnish structure. That is
+      why the DCF uses a normalised tax rate rather than anything reported.</p>
+    </div>
+
+    <div class="card"><h3>FY2026E: what the model implies for the fourth quarter</h3>
+      ${table([
+        ['', ['9M FY26 actual','Q4 FY26E','FY2026E','Q4 FY25 actual'], 'hd'],
+        ['Hardware revenue', [mm1(h.n9m26.hw), mm1(q.hw), mm1(y[0].hw), mm1(q.pyHw)]],
+        ['Membership revenue', [mm1(h.n9m26.mem), mm1(q.mem), mm1(y[0].mem), mm1(q.pyMem)]],
+        ['Total revenue', [mm1(h.n9m26.rev), mm1(q.rev), mm1(y[0].rev), mm1(q.pyRev)], 'tot'],
+        ['  implied Q4 growth', ['', p0(q.g), p0(y[0].rev/h.fy25.rev-1)+' FY', ''], 'muted'],
+        ['Income from operations', [mm1(h.n9m26.ebit), mm1(q.ebit), mm1(y[0].ebit), mm1(q.pyEbit)]],
+        ['Adjusted EBITDA', [mm1(h.n9m26.adjE), mm1(q.adjE), mm1(y[0].adjE), mm1(q.pyAdjE)], 'tot'],
+      ])}
+      <p class="note">Q4 (July to September) is Oura's weakest quarter: Q4 FY25 lost ${mm1(Math.abs(q.pyEbit))} at the operating
+      line on ${mm1(q.pyRev)} of revenue, because the holiday quarter falls in fiscal Q1. The base case has Q4 FY26 at
+      ${p0(q.g)} growth with Ring 5 in market for a full quarter and an operating result of ${mm1(q.ebit)}. If your view of the
+      stub differs, move the FY26E unit and opex inputs rather than the growth rates.</p>
+    </div>
+
+    <div class="card"><h3>Margin trajectory <span class="pill">% of revenue</span></h3>
+      ${lineYr(marginLbls,[
+        {label:'Gross margin', data:gmSer, color:CLR.mem},
+        {label:'Adjusted EBITDA margin', data:adjSer, color:CLR.line},
+        {label:'Operating margin (GAAP, incl. SBC step-up)', data:ebSer, color:CLR.hw},
+      ], v=>v.toFixed(0)+'%', {h:210})}
+      <p class="note">The dip in operating margin in FY27E is deliberate. Historical opex embeds only about 0.8% of
+      revenue of share-based compensation, which is not a public-company run rate. The model steps SBC to
+      ${p0(a.sbcFwd)} of revenue from FY27, fading to ${p0(a.sbcTerm)}, and charges it as a real cost.</p>
+    </div>
+
+    <div class="card"><h3>Forecast income statement <span class="pill">$m, model</span></h3>
+      ${table([
+        ['', pick.map(x=>x.lbl), 'hd'],
+        ['Hardware revenue', pick.map(x=>mm(x.hw))],
+        ['Membership revenue', pick.map(x=>mm(x.mem))],
+        ['Total revenue', pick.map(x=>mm(x.rev)), 'tot'],
+        ['  growth', pick.map(x=>p0(x.revG)), 'muted'],
+        ['  membership mix', pick.map(x=>p0(x.memMix)), 'muted'],
+        ['Gross profit', pick.map(x=>mm(x.gp))],
+        ['  gross margin', pick.map(x=>p1(x.gm)), 'muted'],
+        ['Sales and marketing', pick.map(x=>'('+mm(x.sm)+')')],
+        ['Research and development', pick.map(x=>'('+mm(x.rd)+')')],
+        ['General and administrative', pick.map(x=>'('+mm(x.ga)+')')],
+        ['Incremental share-based comp', pick.map(x=>x.sbcInc>0?'('+mm(x.sbcInc)+')':'-')],
+        ['Income from operations', pick.map(x=>mm(x.ebit)), 'tot'],
+        ['  operating margin', pick.map(x=>p1(x.ebitM)), 'muted'],
+        ['EBITDA', pick.map(x=>mm(x.ebitda))],
+        ['  EBITDA margin', pick.map(x=>p1(x.ebitdaM)), 'muted'],
+        ['Adjusted EBITDA (company basis)', pick.map(x=>mm(x.adjE)), 'tot'],
+      ])}
+      <p class="note">EBITDA here is operating income plus D&A with share-based compensation left in as a cost, which is
+      how the comparable multiples on the valuation tab are calculated. Adjusted EBITDA adds SBC back to match the
+      company's own definition, and is shown only so the FY26E figure can be tied to the filing.</p>
+    </div>
+
+    <div class="card"><h3>Common size <span class="pill">% of revenue</span></h3>
+      ${table([
+        ['', ['FY2024','FY2025','9M FY26','FY26E','FY30E','FY35E'], 'hd'],
+        ['Gross profit', [p1(h.fy24.gm),p1(h.fy25.gm),p1(h.n9m26.gm),p1(y[0].gm),p1(y[4].gm),p1(y[9].gm)]],
+        ['Sales and marketing', [cs(h.fy24.sm,h.fy24.rev),cs(h.fy25.sm,h.fy25.rev),cs(h.n9m26.sm,h.n9m26.rev),cs(y[0].sm,y[0].rev),cs(y[4].sm,y[4].rev),cs(y[9].sm,y[9].rev)]],
+        ['Research and development', [cs(h.fy24.rd,h.fy24.rev),cs(h.fy25.rd,h.fy25.rev),cs(h.n9m26.rd,h.n9m26.rev),cs(y[0].rd,y[0].rev),cs(y[4].rd,y[4].rev),cs(y[9].rd,y[9].rev)]],
+        ['General and administrative', [cs(h.fy24.ga,h.fy24.rev),cs(h.fy25.ga,h.fy25.rev),cs(h.n9m26.ga,h.n9m26.rev),cs(y[0].ga,y[0].rev),cs(y[4].ga,y[4].rev),cs(y[9].ga,y[9].rev)]],
+        ['Operating margin', [cs(h.fy24.ebit,h.fy24.rev),cs(h.fy25.ebit,h.fy25.rev),cs(h.n9m26.ebit,h.n9m26.rev),p1(y[0].ebitM),p1(y[4].ebitM),p1(y[9].ebitM)], 'tot'],
+      ])}
+    </div>
+
+    <div class="card"><h3>Balance sheet and cash flow anchors <span class="pill">at 30 Jun 26, $m</span></h3>
+      ${table([
+        ['Cash and cash equivalents', [mm1(r.BS.cash)]],
+        ['Total debt', [mm1(r.BS.debt)], 'muted'],
+        ['  of which drawn revolver', [mm1(r.BS.revolver)], 'muted'],
+        ['Net debt', [mm1(r.BS.debt-r.BS.cash)], 'tot'],
+        ['Inventories', [mm1(r.BS.inv)]],
+        ['Accounts receivable', [mm1(r.BS.ar)]],
+        ['Accounts payable', [mm1(r.BS.ap)]],
+        ['Deferred revenue, current', [mm1(r.BS.defRevCur)]],
+        ['Total assets', [mm1(r.BS.ta)]],
+        ['Redeemable convertible preferred (carrying)', [mm1(r.BS.prefCarry)], 'muted'],
+        ['Operating cash flow, 9M FY26', [mm1(r.BS.cfo9m)], 'tot'],
+        ['Capex, 9M FY26', [mm1(r.BS.capex9m)]],
+      ])}
+      <p class="note">$375.0m of the debt is drawn revolver used to fund repurchases of common and preferred stock, not
+      operations. $25m was repaid on 13 August 2026. Net debt is effectively nil, and the stockholders' deficit of
+      $1.62bn is an artefact of preferred classification, not distress.</p>
+    </div>
+
+    <div class="disclaimer">FY2024 and FY2025 are audited. The nine months to 30 June 2026 and 2025 are unaudited interim.
+    LTM is calculated as FY2025 plus 9M FY2026 less 9M FY2025. Everything from FY2026E onward is model output.</div>`;
+  }, takeaways(r,a){ const h=r.H, y=r.yrs, q=r.q4; return [
+    `<b>Profitable, but only just, and only recently.</b> LTM net income of ${mm(h.ttm.ni)} on ${mm(h.ttm.rev)} of revenue.
+     FY25 net income was $12 thousand on a ~100% effective tax rate.`,
+    `<b>Gross margin is the volatile line, not opex.</b> 65% to 52% to 55% across FY24, FY25 and 9M FY26, driven by retail
+     mix and Ring 4 warranty reserves rather than anything structural.`,
+    `<b>Operating leverage is real.</b> Opex fell from 62% of revenue in FY24 to 47% in FY25, though it ticked back to 49%
+     in 9M FY26 on IPO costs and a 105% increase in R&D.`,
+    `<b>The SBC step-up is the biggest reported-margin risk.</b> Historical SBC is under 1% of revenue against roughly 17.8m
+     RSUs vesting at listing. GAAP margins will look materially worse from FY27 than the filing suggests.`,
+    `<b>Fiscal Q4 is the weak quarter.</b> Q4 FY25 lost ${mm1(Math.abs(q.pyEbit))} at the operating line. Any read of FY26E has to
+     carry that seasonality, not annualise the nine months.`,
+  ];}},
+  /* ============================== 4. DCF ============================== */
+  {id:'dcf', label:'DCF', render(r,a){
+    const y=r.yrs, d=r.dcf, fc=y.slice(1);
+    const fcfLbls=fc.map(x=>x.lbl.replace('FY20','FY'));
+    return `
+    <h2 class="sec">Discounted cash flow</h2>
+    <p class="lede">Valuation date is fiscal year end 2026. Nine explicit forecast years to FY2035 discounted mid-year,
+    terminal value at the end of FY2035 blended between perpetuity growth and an exit multiple. Unlevered, pre-IPO
+    proceeds.</p>
+
+    ${kpiRow([
+      ['Enterprise value', mm(d.ev), 'at '+p1(a.wacc)+' WACC'],
+      ['Equity value', mm(d.eq), 'less '+mm1(a.netDebt)+' net debt'],
+      ['Value per share', d2(d.ps), a.shares.toFixed(1)+'m diluted shares'],
+      ['Terminal share of value', p0(d.tvShare), d.tvShare>0.75?'high, as expected for a grower':'balanced'],
+    ])}
+
+    <div class="card"><h3>Free cash flow build <span class="pill">$m, unlevered</span></h3>
+      ${table([
+        ['', fc.map(x=>x.lbl.replace('E','')), 'hd'],
+        ['Revenue', fc.map(x=>mm(x.rev))],
+        ['Income from operations', fc.map(x=>mm(x.ebit))],
+        ['  operating margin', fc.map(x=>p1(x.ebitM)), 'muted'],
+        ['Less tax at '+p0(a.taxRate), fc.map(x=>'('+mm(x.ebit*a.taxRate)+')')],
+        ['NOPAT', fc.map(x=>mm(x.nopat)), 'tot'],
+        ['Plus D&A', fc.map(x=>mm(x.da))],
+        ['Less capex', fc.map(x=>'('+mm(x.capex)+')')],
+        ['Less change in working capital', fc.map(x=>(x.dNWC<0?'+'+mm(-x.dNWC):'('+mm(x.dNWC)+')'))],
+        ['Unlevered free cash flow', fc.map(x=>mm(x.fcf)), 'tot'],
+        ['  as % of revenue', fc.map(x=>p1(x.fcf/x.rev)), 'muted'],
+      ])}
+      <p class="note">Working capital is a source of cash at ${p0(-a.nwcPct)} of each incremental revenue dollar, well below the
+      rate observed in 9M FY26, because deferred revenue and accrual gearing decay as growth slows. Share-based
+      compensation is charged as an expense inside operating income rather than added back, which is the conservative
+      treatment and avoids double-counting against the diluted share count.</p>
+    </div>
+
+    <div class="card"><h3>Free cash flow profile</h3>
+      ${colBars(fcfLbls, [{label:'Unlevered FCF', data:fc.map(x=>x.fcf), color:CLR.hw}], v=>mm(v), {h:190, noLegend:true})}
+    </div>
+
+    <div class="card"><h3>Discounting</h3>
+      ${table([
+        ['', fc.map(x=>x.lbl.replace('E','')), 'hd'],
+        ['Unlevered FCF', d.rows.map(x=>mm(x.fcf))],
+        ['Discount factor', d.rows.map(x=>x.df.toFixed(3))],
+        ['Present value', d.rows.map(x=>mm(x.pv)), 'tot'],
+      ])}
+      <p class="note">Mid-year convention, so year one is discounted at 0.5 years. Sum of present values:
+      ${mm(d.pvFcf)}, or ${p0(1-d.tvShare)} of enterprise value.</p>
+    </div>
+
+    <div class="card"><h3>Terminal value <span class="pill">two methods, blended</span></h3>
+      ${table([
+        ['', ['Value at FY35','Weight','PV'], 'hd'],
+        ['Perpetuity growth at '+p1(a.tgr), [mm(d.tvG), p0(a.ggWeight), mm(d.tvG*a.ggWeight*d.dfT)]],
+        ['Exit multiple at '+a.exitMult.toFixed(1)+'x FY35E EBITDA', [mm(d.tvM), p0(1-a.ggWeight), mm(d.tvM*(1-a.ggWeight)*d.dfT)]],
+        ['Blended terminal value', [mm(d.tv), '', mm(d.pvTV)], 'tot'],
+        ['Implied exit multiple on the blend', [(d.tv/r.yT.ebitda).toFixed(1)+'x FY35E EBITDA','',''], 'muted'],
+        ['Implied perpetuity growth on the blend', [(function(){const w=a.wacc;const f=r.yT.fcf;const tv=d.tv;const g=(tv*w-f)/(tv+f);return p1(g);})(),'',''], 'muted'],
+      ])}
+      <p class="note">The two methods disagree by a wide margin, which they usually do for a business still growing at
+      ${p0(r.yT.revG)} in the terminal year. The perpetuity number is the more conservative of the two here. Weight them
+      with the input rather than picking one and hoping.</p>
+    </div>
+
+    <div class="card"><h3>Enterprise value to value per share</h3>
+      ${table([
+        ['PV of forecast free cash flow', [mm(d.pvFcf)]],
+        ['PV of terminal value', [mm(d.pvTV)]],
+        ['Enterprise value', [mm(d.ev)], 'tot'],
+        ['Less net debt at 30 Jun 26', ['('+mm1(a.netDebt)+')']],
+        ['Equity value', [mm(d.eq)], 'tot'],
+        ['Diluted shares', [a.shares.toFixed(1)+'m']],
+        ['Value per share', [d2(d.ps)], 'tot'],
+        ['Implied EV / LTM revenue', [(d.ev/r.H.ttm.rev).toFixed(1)+'x'], 'muted'],
+        ['Implied EV / FY27E revenue', [(d.ev/r.y27.rev).toFixed(1)+'x'], 'muted'],
+        ['Implied EV / FY29E EBITDA', [(d.ev/r.y29.ebitda).toFixed(1)+'x'], 'muted'],
+      ])}
+      <p class="note">The share count is the soft number in this bridge. The S-1 leaves every share blank because the
+      price range is not set: 136.8m preferred converting one for one, 9.7m common, 10.9m options and about 17.8m RSUs
+      gets you to roughly 175m before the Eli Lilly SAFE and the primary offering, neither of which is sized.</p>
+    </div>
+
+    <div class="card"><h3>Sensitivity <span class="pill">value per share</span></h3>
+      ${table([
+        ['WACC ↓ / terminal growth →', r.gRange.map(g=>p1(g)), 'hd'],
+        ...r.sens.map((row,i)=>[p1(r.wRange[i]), row.map(v=>v===null?'n.m.':d0(v)), r.wRange[i]===a.wacc?'tot':''])
+      ])}
+      <p class="note">A 2 point move in WACC swings the value by roughly ${p0(Math.abs((r.sens[0][2]-r.sens[4][2])/r.sens[2][2]))} either
+      way. That is what ${p0(d.tvShare)} of value sitting in the terminal year does. Anyone quoting a single DCF number for
+      a business at this stage of growth is quoting an assumption, not a valuation.</p>
+    </div>
+
+    <div class="card"><h3>Scenario range</h3>
+      ${table([
+        ['', ['Enterprise value','Value per share','Implied EV/LTM revenue'], 'hd'],
+        ['WACC '+p1(a.wacc+0.015), [mm(r.dcfLo.ev), d2(r.dcfLo.ps), (r.dcfLo.ev/r.H.ttm.rev).toFixed(1)+'x']],
+        ['WACC '+p1(a.wacc)+' (base)', [mm(d.ev), d2(d.ps), (d.ev/r.H.ttm.rev).toFixed(1)+'x'], 'tot'],
+        ['WACC '+p1(Math.max(0.04,a.wacc-0.015)), [mm(r.dcfHi.ev), d2(r.dcfHi.ps), (r.dcfHi.ev/r.H.ttm.rev).toFixed(1)+'x']],
+      ])}
+      <p class="note">Use the Bull and Bear scenario buttons for the fuller picture. Those flex growth, retention,
+      margin, SBC and the discount rate together, which is how these variables actually move.</p>
+    </div>
+
+    <div class="disclaimer">The DCF is built on model forecasts, not company guidance. Oura provides no outlook in the S-1.
+    WACC, tax rate, terminal growth and the exit multiple are judgement inputs with no disclosed anchor. IPO primary
+    proceeds are not modelled, so this values the business as it stands at 30 June 2026.</div>`;
+  }, takeaways(r,a){ const d=r.dcf; return [
+    `<b>Base case enterprise value of ${mm(d.ev)}</b>, or ${d2(d.ps)} a share on ${a.shares.toFixed(0)}m diluted shares. That is
+     ${(d.ev/r.H.ttm.rev).toFixed(1)}x LTM revenue and ${(d.ev/r.y27.rev).toFixed(1)}x FY27E revenue.`,
+    `<b>${p0(d.tvShare)} of the value is terminal.</b> That is normal for a business compounding at this rate, and it is also
+     the honest health warning on the number.`,
+    `<b>The model is not cash-constrained.</b> Free cash flow turns comfortably positive in FY2027E and negative working
+     capital means growth funds itself. No equity raise is needed for the plan in this model.`,
+    `<b>The margin ramp is doing the heavy lifting.</b> Operating margin goes from ${p1(r.y26.ebitM)} in FY26E to
+     ${p1(r.yT.ebitM)} in FY35E, almost entirely on membership mix rising to ${p0(r.yT.memMix)} of revenue.`,
+    `<b>Test the terminal EBITDA multiple first.</b> At ${a.exitMult.toFixed(1)}x it implies Oura still trades like Garmin (21x) or
+     DexCom (23x) do today, ten years out and growing at ${p0(r.yT.revG)}.`,
+  ];}},
+
+  /* ============================== 5. VALUATION ============================== */
+  {id:'val', label:'Valuation', render(r,a){
+    const c=r.comps, cs=r.compStats, o=r.ouraLtm;
+    const psOf = ev => (ev-a.netDebt)/a.shares;
+    const bucket = b => c.filter(x=>x.bucket===b);
+    const compRows = b => bucket(b).flatMap(x=>[[x.n+' <span style="color:#9aa3ae">'+x.t+'</span>',
+        [mm(x.ev), mm(x.rev), p0(x.g), p0(x.gm), p0(x.ebitdaM), x.evs.toFixed(1)+'x', x.eve?x.eve.toFixed(1)+'x':'nm']]]);
+    return `
+    <h2 class="sec">Triangulating what Oura is worth</h2>
+    <p class="lede">No single method carries a business growing 74% with a 6% EBITDA margin. Six of them, and the
+    reference points the market has already set, are below. Market data as at 7 September 2026.</p>
+
+    ${kpiRow([
+      ['Football field midpoint', mm(r.fieldMid), d2(psOf(r.fieldMid))+' per share'],
+      ['Range across methods', mm(r.fieldLo)+' to '+mm(r.fieldHi), 'wide, and honestly so'],
+      ['DCF base case', mm(r.dcf.ev), (r.dcf.ev/o.rev).toFixed(1)+'x LTM revenue'],
+      ['Reported IPO target', '&gt;$16.0B', 'press reports, not the filing'],
+    ])}
+
+    <div class="card"><h3>Trading comparables <span class="pill">7 Sep 2026</span></h3>
+      ${table([
+        ['', ['EV','LTM rev','Growth','GM','EBITDA %','EV/Rev','EV/EBITDA'], 'hd'],
+        ['<b>Wearables and consumer hardware</b>', ['','','','','','',''], 'muted'],
+        ...compRows('Wearables & consumer hardware'),
+        ['<b>Connected health and biosensors</b>', ['','','','','','',''], 'muted'],
+        ...compRows('Connected health & biosensors'),
+        ['<b>High-growth consumer platforms</b>', ['','','','','','',''], 'muted'],
+        ...compRows('High-growth consumer platforms'),
+        ['Median', ['','', p0(cs.g), p0(cs.gm), p0(cs.em), cs.evs.toFixed(1)+'x', cs.eve.toFixed(1)+'x'], 'tot'],
+        ['<b>Oura, LTM Jun-26</b>', [mm(r.dcf.ev)+'*', mm(o.rev), p0(o.g), p0(o.gm), p0(o.ebitdaM),
+          (r.dcf.ev/o.rev).toFixed(1)+'x', (r.dcf.ev/o.ebitda).toFixed(1)+'x'], 'tot'],
+      ])}
+      <p class="note">*Oura EV shown at the DCF base case for comparability. Oura grows roughly four times faster than
+      the median comp and earns roughly a fifth of the median EBITDA margin. Those two facts pull the multiple in
+      opposite directions, which is exactly why the next card matters.</p>
+    </div>
+
+    <div class="card"><h3>What the comp set is actually paying for</h3>
+      ${table([
+        ['', ['EV/Revenue','Growth','EBITDA margin','Rule of 40','EV/Rev per point of growth'], 'hd'],
+        ...c.slice().sort((x,y)=>y.evs-x.evs).map(x=>[x.t,
+          [x.evs.toFixed(1)+'x', p0(x.g), p0(x.ebitdaM), (x.r40*100).toFixed(0), x.evsPerG?x.evsPerG.toFixed(2):'nm']]),
+        ['Median', [cs.evs.toFixed(1)+'x', p0(cs.g), p0(cs.em), (cs.r40*100).toFixed(0), cs.evsPerG.toFixed(2)], 'tot'],
+      ])}
+      <p class="note"><b>The finding that matters.</b> Regressing EV/Revenue on growth alone across this set gives a
+      <i>negative</i> slope (${r.regG.b.toFixed(1)}): the fastest growers here, Hims at ${p0(0.28)} and On at ${p0(0.185)}, trade at the
+      lowest multiples, while Garmin and DexCom get 6.4x and 6.6x on mid-teens growth and roughly 30% EBITDA margins.
+      This market is paying for profitable growth, not growth. Regressing on the rule-of-40 score instead gives a
+      sensible fit (slope ${r.regR.b.toFixed(1)}) and is the version used below.</p>
+    </div>
+
+    <div class="card"><h3>Two ways of adjusting the comps to Oura</h3>
+      ${table([
+        ['', ['Method','Implied EV/Rev','Implied EV','Per share'], 'hd'],
+        ['Growth adjusted', ['Median '+cs.evsPerG.toFixed(2)+'x per growth point × '+p0(o.g),
+          r.impliedG.toFixed(1)+'x', mm(r.evGrowthAdj), d2(psOf(r.evGrowthAdj))]],
+        ['Rule of 40', ['Regression on growth plus EBITDA margin, Oura at '+(o.r40*100).toFixed(0),
+          r.impliedR.toFixed(1)+'x', mm(r.evR40), d2(psOf(r.evR40))]],
+        ['Spread', ['', (r.impliedG-r.impliedR).toFixed(1)+'x', mm(r.evGrowthAdj-r.evR40), ''], 'tot'],
+      ])}
+      <p class="note">The gap between these two is the entire Oura debate in one number. Credit the growth alone and it
+      is worth ${mm(r.evGrowthAdj)}. Insist that the current 6% EBITDA margin is a real constraint rather than a choice about
+      reinvestment, and it is worth ${mm(r.evR40)}. Everything on this page sits between those poles.</p>
+    </div>
+
+    <div class="card"><h3>Precedent transaction</h3>
+      ${table([
+        ['', ['Date','EV','EV/Revenue','EV/EBITDA'], 'hd'],
+        [r.PRECEDENT.n, [r.PRECEDENT.date, mm(r.PRECEDENT.ev), r.PRECEDENT.evs.toFixed(1)+'x', r.PRECEDENT.evebitda.toFixed(1)+'x']],
+        ['Applied to Oura LTM revenue', ['', mm(r.PRECEDENT.evs*o.rev), r.PRECEDENT.evs.toFixed(1)+'x', ''], 'tot'],
+      ])}
+      <p class="note">Danaher's takeout of Masimo closed in June 2026 at 6.3x sales and 26.6x EBITDA for a patient-monitoring
+      business growing in the high single digits. It is the only clean recent print in adjacent hardware-plus-health, and
+      it sets a floor rather than a target: it is a control premium on a slower asset.</p>
+    </div>
+
+    <div class="card"><h3>Football field <span class="pill">enterprise value</span></h3>
+      ${fieldChart(r.field, [
+        {v:11000, label:'Series E mark $11.0B', color:'#9aa3ae'},
+        {v:16000, label:'Reported IPO target $16B', color:'#c2410c'},
+      ], v=>'$'+(v/1000).toFixed(0)+'B')}
+      <p class="note">The Series E in September 2025 priced at $53.57 a share and was reported as an $11bn mark. Oura then
+      spent ${mm(741.8)} in FY26 buying back common and preferred, taking the preferred count from 163.6m to 136.8m, so the
+      per-share arithmetic on that round does not carry across cleanly.</p>
+    </div>
+
+    <div class="card"><h3>Triangulation</h3>
+      ${table([
+        ['', ['Enterprise value','Per share','EV / LTM revenue'], 'hd'],
+        ...r.field.map(f=>[f.label, [mm((f.lo+f.hi)/2), d2(psOf((f.lo+f.hi)/2)), ((f.lo+f.hi)/2/o.rev).toFixed(1)+'x']]),
+        ['Midpoint of methods', [mm(r.fieldMid), d2(psOf(r.fieldMid)), (r.fieldMid/o.rev).toFixed(1)+'x'], 'tot'],
+        ['Reported IPO target', ['&gt;$16.0B', d2(psOf(16000)), (16000/o.rev).toFixed(1)+'x'], 'muted'],
+        ['Series E mark, Sep 2025', ['~$11.0B', '', (11000/o.rev).toFixed(1)+'x'], 'muted'],
+      ])}
+      <p class="note">At the reported $16bn, Oura would list at ${(16000/o.rev).toFixed(1)}x LTM revenue and roughly
+      ${(16000/r.y27.rev).toFixed(1)}x FY27E revenue. That is above every comp in the set on a headline basis and defensible only
+      on the growth-adjusted view. The bear case for the multiple is not that the business is bad, it is that this comp
+      set has repeatedly refused to pay for growth without margin.</p>
+    </div>
+
+    <div class="disclaimer">Comparable-company market data is sourced from stockanalysis.com as at 7 September 2026 and is
+    indicative rather than a licensed data feed. Enterprise values, LTM revenue, EBITDA and growth are as reported there.
+    The Masimo precedent reflects its last trading statistics before the Danaher acquisition closed in June 2026. The
+    "reported IPO target" is press reporting (Bloomberg, via Yahoo Finance), not a figure in the S-1: the filing sets no
+    price range, offering size or share count.</div>`;
+  }, takeaways(r,a){ const o=r.ouraLtm; return [
+    `<b>Methods midpoint of ${mm(r.fieldMid)}</b>, or ${d2((r.fieldMid-a.netDebt)/a.shares)} a share. The reported $16bn target sits
+     inside the range but above the midpoint.`,
+    `<b>The comp set does not pay for growth on its own.</b> Regressed on growth alone the slope is negative. Garmin and
+     DexCom get the highest multiples in the set on mid-teens growth and ~30% EBITDA margins.`,
+    `<b>So the question is whether Oura's 6% margin is a choice.</b> If reinvestment is genuinely optional the growth-adjusted
+     ${mm(r.evGrowthAdj)} is fair. If it is structural, the rule-of-40 read of ${mm(r.evR40)} is closer.`,
+    `<b>Hardware mix caps the multiple.</b> ${p0(r.y26.hw/r.y26.rev)} of FY26E revenue is low-margin, non-recurring hardware.
+     Membership crossing half of revenue is what would re-rate this toward a software multiple, and that is FY34E in the base case.`,
+    `<b>Watch the share count, not just the valuation.</b> Every share figure in the S-1 is blank. At ${a.shares.toFixed(0)}m diluted
+     the midpoint is ${d2((r.fieldMid-a.netDebt)/a.shares)}; the count moves at pricing and the SAFE is unsized.`,
+  ];}},
+
+  ],
+};
+MODELS[OURA.id]=OURA; ACTIVE_COMPANY=OURA.id;
+
+// ===== END MODEL =====
+
+/* ============================================================ RENDER HELPERS ============================================================ */
+function kpiRow(items){ return `<div class="kpis">${items.map(k=>`<div class="kpi"><div class="k">${k[0]}</div><div class="v num">${k[1]}</div><div class="s">${k[2]||''}</div></div>`).join('')}</div>`; }
+function wonAll(t){ return int(t.wonAll)+' of '+int(t.pool)+' wins'; }
+function table(rows){
+  return '<table class="t">'+rows.map(r=>{
+    const cls=r[2]?(' class="'+r[2]+'"'):''; const cells=[`<td>${r[0]}</td>`].concat(r[1].map(c=>`<td>${c}</td>`));
+    return `<tr${cls}>${cells.join('')}</tr>`;
+  }).join('')+'</table>';
+}
+function barH(items, fmt){ const max=Math.max(...items.map(i=>i.value),0.0001);
+  return `<div class="bars">${items.map(i=>`<div class="bar-row"><span class="bar-label">${i.label}</span><div class="bar-track"><div class="bar-fill" style="width:${(i.value/max*100).toFixed(1)}%;background:${i.color}"></div></div><span class="bar-val">${fmt(i.value)}</span></div>`).join('')}</div>`; }
+function lineChart(series, n, single){
+  const W=560,H=190,P=42,RP=12,TP=12,BP=24;
+  const all=series.flatMap(s=>s.data); let max=Math.max(...all,0), min=Math.min(...all,0);
+  if(max===min) max=min+1; const span=max-min;
+  const x=i=>P+i*(W-P-RP)/(n-1), y=v=>TP+(H-TP-BP)-((v-min)/span)*(H-TP-BP);
+  const grid=[max,(max+min)/2,min].map(v=>`<line x1="${P}" y1="${y(v).toFixed(1)}" x2="${W-RP}" y2="${y(v).toFixed(1)}" stroke="#eef1f5"/><text x="${P-6}" y="${(y(v)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="#9aa3ae">${money(v)}</text>`).join('');
+  const zero = (min<0&&max>0)?`<line x1="${P}" y1="${y(0).toFixed(1)}" x2="${W-RP}" y2="${y(0).toFixed(1)}" stroke="#cbd2da" stroke-dasharray="3 3"/>`:'';
+  const lines=series.map(s=>`<polyline fill="none" stroke="${s.color}" stroke-width="2" points="${s.data.map((v,i)=>x(i).toFixed(1)+','+y(v).toFixed(1)).join(' ')}"/>`).join('');
+  const xl=[0,5,11,17,23].map(i=>`<text x="${x(i).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="9" fill="#9aa3ae">M${i+1}</text>`).join('');
+  const leg=`<div class="legend">${series.map(s=>`<span><i style="background:${s.color}"></i>${s.label}</span>`).join('')}</div>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart">${grid}${zero}${lines}${xl}</svg>${single?'':leg}`;
+}
+
+/* ============================================================ APP STATE ============================================================ */
+let MODEL = MODELS[ACTIVE_COMPANY];
+let activeTab = MODEL.tabs[0].id;
+/* ---- store: three scenarios, each with a working (live) + saved (revert point) copy ---- */
+const STORE_KEY = () => 'fd_'+MODEL.id+'_v2';
+const SCENARIOS = ['base','bull','bear'];
+function templateFor(scn){ return scn==='base' ? Object.assign({}, MODEL.defaults) : Object.assign({}, MODEL.defaults, MODEL.presets[scn]||{}); }
+function freshStore(){ const s={active:'base',scenarios:{}}; SCENARIOS.forEach(scn=>{const t=templateFor(scn);s.scenarios[scn]={working:Object.assign({},t),saved:Object.assign({},t)};}); return s; }
+function loadStore(){
+  try{ const raw=localStorage.getItem(STORE_KEY()); if(!raw) return freshStore();
+    const s=JSON.parse(raw); if(!s||!s.scenarios) return freshStore();
+    SCENARIOS.forEach(scn=>{ const t=templateFor(scn);
+      if(!s.scenarios[scn]) s.scenarios[scn]={working:Object.assign({},t),saved:Object.assign({},t)};
+      s.scenarios[scn].working=Object.assign({}, t, s.scenarios[scn].working||{});
+      s.scenarios[scn].saved  =Object.assign({}, t, s.scenarios[scn].saved||{});
+    });
+    if(!SCENARIOS.includes(s.active)) s.active='base'; return s;
+  }catch(e){ return freshStore(); }
+}
+function saveStore(){ localStorage.setItem(STORE_KEY(), JSON.stringify(store)); }
+let store = loadStore();
+let state = store.scenarios[store.active].working;
+const curScn = () => store.scenarios[store.active];
+
+function fmtVal(inp, v){ return inp.type==='pct' ? (Math.round(v*1000)/10) : v; }
+function parseVal(inp, raw){ const n=parseFloat(raw); if(isNaN(n)) return state[inp.id]; return inp.type==='pct' ? n/100 : n; }
+function unitOf(inp){ if(inp.unit) return inp.unit; if(inp.type==='pct') return '%'; if(inp.type==='money') return '$'; return ''; }
+
+/* ---- assumption rationale: click/focus an input to reveal its description, double-click to edit ---- */
+function ratKey(){ return 'fd_rat_'+MODEL.id; }
+function loadRats(){ try{ return JSON.parse(localStorage.getItem(ratKey()))||{}; }catch(e){ return {}; } }
+function ratText(id){ const r=loadRats(); if(id in r) return r[id]; const inp=findInput(id); if(inp&&inp.note) return inp.note; return (MODEL.notes&&MODEL.notes[id])||''; }
+function setRat(id,txt){ const r=loadRats(); r[id]=txt; localStorage.setItem(ratKey(), JSON.stringify(r)); }
+function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function renderRat(id){ const el=document.querySelector('[data-ratbody="'+id+'"]'); if(!el) return; const t=ratText(id);
+  el.innerHTML=(t?escHtml(t):'<span class="empty">No rationale yet.</span>')+'<span class="edit-hint">Double-click to edit</span>'; }
+function showRat(id){ const b=document.querySelector('[data-ratbody="'+id+'"]'); if(!b||b.classList.contains('show')) return;
+  b.classList.add('show'); const ic=document.querySelector('.info[data-rat="'+id+'"]'); if(ic) ic.classList.add('on'); renderRat(id); }
+function toggleRat(id){ const b=document.querySelector('[data-ratbody="'+id+'"]'); const ic=document.querySelector('.info[data-rat="'+id+'"]');
+  const show=b.classList.toggle('show'); if(ic) ic.classList.toggle('on',show); if(show) renderRat(id); }
+function editRat(id){ const el=document.querySelector('[data-ratbody="'+id+'"]'); if(!el) return; const t=ratText(id);
+  el.innerHTML='<textarea>'+escHtml(t)+'</textarea>'; const ta=el.querySelector('textarea'); ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length);
+  let done=false;
+  const commit=()=>{ if(done) return; done=true; setRat(id, ta.value.trim()); setTimeout(()=>renderRat(id),0); };
+  ta.addEventListener('blur', commit);
+  ta.addEventListener('keydown', e=>{ if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)) ta.blur(); else if(e.key==='Escape'){ done=true; setTimeout(()=>renderRat(id),0); } }); }
+
+function buildInputs(){
+  const root=document.getElementById('inputs'); root.innerHTML='';
+  MODEL.groups.forEach(g=>{
+    const det=document.createElement('details'); det.className='grp'+(g.tabs.includes(activeTab)?' relevant':'');
+    det.open=g.tabs.includes(activeTab); det.dataset.tabs=g.tabs.join(',');
+    const inputs=g.inputs.map(inp=>`<div class="inp"><div class="lab"><label>${inp.label}</label><span class="info" data-rat="${inp.id}" title="Description & rationale">i</span></div><div class="inwrap"><input type="number" step="${inp.step}" data-id="${inp.id}" value="${fmtVal(inp,state[inp.id])}"><span class="unit">${unitOf(inp)}</span></div><div class="rat" data-ratbody="${inp.id}"></div></div>`).join('');
+    det.innerHTML=`<summary><span class="chev">▶</span>${g.label}<span class="rel"></span></summary><div class="grp-body">${inputs}</div>`;
+    root.appendChild(det);
+  });
+  root.querySelectorAll('input[data-id]').forEach(el=>{
+    const inp=findInput(el.dataset.id);
+    el.addEventListener('input',()=>{ state[inp.id]=parseVal(inp, el.value); saveStore(); renderBody(); updateDirty(); });
+    el.addEventListener('focus',()=>showRat(inp.id));
+  });
+  root.querySelectorAll('.info[data-rat]').forEach(ic=>ic.addEventListener('click',()=>toggleRat(ic.dataset.rat)));
+  root.querySelectorAll('.rat[data-ratbody]').forEach(b=>b.addEventListener('dblclick',()=>editRat(b.dataset.ratbody)));
+}
+function findInput(id){ for(const g of MODEL.groups){ const f=g.inputs.find(i=>i.id===id); if(f) return f; } }
+
+function buildTabs(){
+  const bar=document.getElementById('tabbar'); bar.innerHTML='';
+  MODEL.tabs.forEach(t=>{ const b=document.createElement('button'); b.className='tab'+(t.id===activeTab?' active':''); b.textContent=t.label;
+    b.onclick=()=>{ activeTab=t.id; document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); b.classList.add('active');
+      document.querySelectorAll('details.grp').forEach(d=>{ const rel=d.dataset.tabs.split(',').includes(activeTab); d.classList.toggle('relevant',rel); d.open=rel; });
+      renderBody(); loadNotes(); };
+    bar.appendChild(b); });
+}
+
+function renderBody(){
+  const res=MODEL.compute(state);
+  const tab=MODEL.tabs.find(t=>t.id===activeTab);
+  document.getElementById('body').innerHTML=tab.render(res,state);
+  const tk=tab.takeaways(res,state);
+  document.getElementById('takeaways').innerHTML='<ul>'+tk.map(t=>`<li>${t}</li>`).join('')+'</ul>';
+  document.getElementById('notesHead').textContent='Notes — '+tab.label;
+}
+
+/* notes persistence */
+function notesKey(){ return 'fd_notes_'+MODEL.id+'_'+activeTab; }
+function loadNotes(){ document.getElementById('notes').value = localStorage.getItem(notesKey())||''; }
+document.getElementById('notes').addEventListener('input', e=>{
+  localStorage.setItem(notesKey(), e.target.value);
+  const s=document.getElementById('saved'); s.classList.add('show'); clearTimeout(window._st); window._st=setTimeout(()=>s.classList.remove('show'),900);
+});
+
+/* ----- scenarios: three independent persisted models, each with a working + saved (revert) copy ----- */
+const SCN_LABEL={base:'Base',bull:'Bull',bear:'Bear'};
+function switchScenario(scn){
+  if(scn===store.active) return;
+  store.active=scn; state=store.scenarios[scn].working; saveStore();
+  syncScnButtons(); buildInputs(); renderBody(); updateDirty();
+}
+function saveDown(){ const s=curScn(); s.saved=JSON.parse(JSON.stringify(s.working)); saveStore(); updateDirty(); }
+function revert(){ const s=curScn(); s.working=JSON.parse(JSON.stringify(s.saved)); state=s.working; saveStore(); buildInputs(); renderBody(); updateDirty(); }
+function resetTemplate(){
+  if(!confirm('Reset '+SCN_LABEL[store.active]+' to its template defaults? Your saved revert point is kept.')) return;
+  const s=curScn(); s.working=templateFor(store.active); state=s.working; saveStore(); buildInputs(); renderBody(); updateDirty();
+}
+function isDirty(){ const s=curScn(); return JSON.stringify(s.working)!==JSON.stringify(s.saved); }
+function updateDirty(){
+  const d=isDirty();
+  const dot=document.getElementById('dirty'); if(dot){ dot.className='dirty '+(d?'on':'off'); dot.textContent=d?'● Edited (unsaved)':'● Saved'; }
+  const r=document.getElementById('btnRevert'), sv=document.getElementById('btnSave'); if(r) r.disabled=!d; if(sv) sv.disabled=!d;
+}
+function syncScnButtons(){ document.querySelectorAll('#scnsel button').forEach(b=>b.classList.toggle('active', b.dataset.scn===store.active)); }
+function buildScenarioBar(){
+  document.querySelectorAll('#scnsel button').forEach(b=> b.onclick=()=>switchScenario(b.dataset.scn));
+  document.getElementById('btnSave').onclick=saveDown;
+  document.getElementById('btnRevert').onclick=revert;
+  document.getElementById('btnReset').onclick=resetTemplate;
+  syncScnButtons(); updateDirty();
+}
+
+/* boot */
+document.getElementById('company').innerHTML='<option>'+MODEL.name+'</option>';
+buildScenarioBar(); buildTabs(); buildInputs(); renderBody(); loadNotes();
+</script>
+</body>
+</html>
