@@ -195,6 +195,28 @@ const u1  = v => v.toFixed(1)+'M';
 const u2  = v => v.toFixed(2)+'M';
 const mult= v => (isFinite(v)&&v>0 ? v.toFixed(1) : 'nm')+'x';
 
+// ---------- wide tables scroll sideways with the label column pinned ----------
+const tbl = rows => '<div class="tscroll at-left">'+table(rows)+'</div>';
+document.addEventListener('scroll', e => {
+  const d = e.target; if(!d.classList || !d.classList.contains('tscroll')) return;
+  d.classList.toggle('at-left', d.scrollLeft < 2);
+}, true);
+document.head.insertAdjacentHTML('beforeend', `<style>
+  .tscroll{overflow-x:auto;overflow-y:visible;margin:0 -2px;padding-bottom:2px}
+  .tscroll table.t td:not(:first-child){white-space:nowrap}
+  .tscroll table.t td:first-child{position:sticky;left:0;background:var(--panel);z-index:2;
+    min-width:176px;box-shadow:1px 0 0 var(--line2)}
+  .tscroll.at-left table.t td:first-child{box-shadow:1px 0 0 var(--line2)}
+  .tscroll:not(.at-left) table.t td:first-child{
+    box-shadow:1px 0 0 var(--line2), 7px 0 7px -5px rgba(20,30,45,.16)}
+  .tscroll::-webkit-scrollbar{height:9px}
+  .tscroll::-webkit-scrollbar-thumb{background:#d8dde4;border-radius:5px}
+  .tscroll::-webkit-scrollbar-thumb:hover{background:#c4cbd4}
+  .tscroll::-webkit-scrollbar-track{background:transparent}
+  td.act{background:#fbfcfd;color:#5a6673}
+  .card h3 .pill.act{background:#eef1f5;color:#717b87}
+</style>`);
+
 // ---------- chart helpers (annual series, not the shell's month grid) ----------
 const CLR = {hw:'#2563eb', mem:'#0f9d8c', line:'#b7791f', neg:'#c2410c', grey:'#9aa3ae', pur:'#7c5cbf'};
 
@@ -270,10 +292,10 @@ function fieldChart(rows, refs, fmt){
 
 // ---------- historical actuals from the S-1 ($M; units and members in millions) ----------
 const H = {
-  fy24:  {lbl:'FY2024',  hw:331.203,  mem:75.548,  rev:406.751,  cogs:142.657, gp:264.094, sm:108.410, rd:90.596,  ga:51.648,  opex:250.654, ebit:13.440, ni:3.649,  da:17.405, sbc:6.127, adjE:36.972, units:1.0, memEnd:1.3, rpu:332, repeat:0.05, gm:0.6493},
-  fy25:  {lbl:'FY2025',  hw:749.393,  mem:158.463, rev:907.856,  cogs:436.844, gp:471.012, sm:202.217, rd:141.957, ga:81.506,  opex:425.680, ebit:45.332, ni:0.012,  da:23.285, sbc:6.249, adjE:74.866, units:2.3, memEnd:2.9, rpu:326, repeat:0.09, gm:0.5188},
-  n9m25: {lbl:'9M FY25', hw:588.726,  mem:108.843, rev:697.569,  cogs:341.544, gp:356.025, sm:140.273, rd:101.078, ga:54.409,  opex:295.760, ebit:60.265, ni:1.573,  da:17.310, sbc:5.930, adjE:83.505, units:1.8, memEnd:2.5, rpu:null,repeat:null,gm:0.5104},
-  n9m26: {lbl:'9M FY26', hw:973.980,  mem:240.526, rev:1214.506, cogs:552.339, gp:662.167, sm:257.858, rd:206.800, ga:126.321, opex:590.979, ebit:71.188, ni:60.768, da:25.455, sbc:10.007,adjE:106.650,units:3.1, memEnd:5.0, rpu:311, repeat:0.11, gm:0.5452},
+  fy24:  {lbl:'FY2024',  hw:331.203,  mem:75.548,  rev:406.751,  cogs:142.657, gp:264.094, sm:108.410, rd:90.596,  ga:51.648,  opex:250.654, ebit:13.440, ni:3.649,  da:17.405, sbc:6.127, adjE:36.972, units:1.0, memEnd:1.3, rpu:332, repeat:0.05, gm:0.6493, capex:13.189, wcSrc:8.674},
+  fy25:  {lbl:'FY2025',  hw:749.393,  mem:158.463, rev:907.856,  cogs:436.844, gp:471.012, sm:202.217, rd:141.957, ga:81.506,  opex:425.680, ebit:45.332, ni:0.012,  da:23.285, sbc:6.249, adjE:74.866, units:2.3, memEnd:2.9, rpu:326, repeat:0.09, gm:0.5188, capex:21.724, wcSrc:80.375},
+  n9m25: {lbl:'9M FY25', hw:588.726,  mem:108.843, rev:697.569,  cogs:341.544, gp:356.025, sm:140.273, rd:101.078, ga:54.409,  opex:295.760, ebit:60.265, ni:1.573,  da:17.310, sbc:5.930, adjE:83.505, units:1.8, memEnd:2.5, rpu:null,repeat:null,gm:0.5104, capex:12.819, wcSrc:93.371},
+  n9m26: {lbl:'9M FY26', hw:973.980,  mem:240.526, rev:1214.506, cogs:552.339, gp:662.167, sm:257.858, rd:206.800, ga:126.321, opex:590.979, ebit:71.188, ni:60.768, da:25.455, sbc:10.007,adjE:106.650,units:3.1, memEnd:5.0, rpu:311, repeat:0.11, gm:0.5452, capex:66.240, wcSrc:238.928},
 };
 H.ttm = {lbl:'LTM Jun-26',
   hw:H.fy25.hw+H.n9m26.hw-H.n9m25.hw, mem:H.fy25.mem+H.n9m26.mem-H.n9m25.mem,
@@ -283,6 +305,7 @@ H.ttm = {lbl:'LTM Jun-26',
   opex:H.fy25.opex+H.n9m26.opex-H.n9m25.opex, ebit:H.fy25.ebit+H.n9m26.ebit-H.n9m25.ebit,
   ni:H.fy25.ni+H.n9m26.ni-H.n9m25.ni, da:H.fy25.da+H.n9m26.da-H.n9m25.da,
   sbc:H.fy25.sbc+H.n9m26.sbc-H.n9m25.sbc, adjE:H.fy25.adjE+H.n9m26.adjE-H.n9m25.adjE,
+  capex:H.fy25.capex+H.n9m26.capex-H.n9m25.capex, wcSrc:H.fy25.wcSrc+H.n9m26.wcSrc-H.n9m25.wcSrc,
   units:3.6, memEnd:5.0, rpu:null, repeat:null};
 H.ttm.gm = H.ttm.gp/H.ttm.rev;
 
@@ -567,6 +590,12 @@ const OURA = {
     const fieldLo = Math.min(...field.map(f=>f.lo)), fieldHi = Math.max(...field.map(f=>f.hi));
     const fieldMid = field.reduce((s,f)=>s+(f.lo+f.hi)/2,0)/field.length;
 
+    /* ---- historical unlevered FCF, same definition as the forecast ---- */
+    const histFcf = h => { const tax=h.ebit*a.taxRate, nopat=h.ebit-tax;
+      return {lbl:h.lbl, rev:h.rev, ebit:h.ebit, ebitM:h.ebit/h.rev, tax, nopat, da:h.da,
+              capex:h.capex, dNWC:-h.wcSrc, fcf:nopat+h.da-h.capex+h.wcSrc, actual:true}; };
+    const hist = [histFcf(H.fy24), histFcf(H.fy25)];
+
     /* ---- unit economics ---- */
     const hwGPunit = y26.rpu*y26.hwGM;
     const cacBlend = (y26.sm*a.smAcqShare)/y26.newM;
@@ -579,7 +608,7 @@ const OURA = {
     const ltvCac   = ltv/cacBlend;
     const dayOne   = hwGPunit - cacBlend;
 
-    return {yrs, labels, y26, y27, y29, yT, N, q4, dcf, dcfLo, dcfHi, sens, wRange, gRange,
+    return {yrs, labels, y26, y27, y29, yT, N, q4, dcf, dcfLo, dcfHi, sens, wRange, gRange, hist,
             comps, compStats, ouraLtm, regG, regR, impliedG, impliedR, evGrowthAdj, evR40,
             field, fieldLo, fieldHi, fieldMid,
             unit:{hwGPunit, cacBlend, cacPaid, memGPyr, life, ltvMem, repeatHW, ltv, ltvCac, dayOne},
@@ -625,7 +654,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Operating metrics as filed</h3>
-      ${table([
+      ${tbl([
         ['', ['FY2024','FY2025','9M FY25','9M FY26'], 'hd'],
         ['Rings sold', [u1(h.fy24.units),u1(h.fy25.units),u1(h.n9m25.units),u1(h.n9m26.units)]],
         ['Paid members, period end', [u1(h.fy24.memEnd),u1(h.fy25.memEnd),u1(h.n9m25.memEnd),u1(h.n9m26.memEnd)]],
@@ -640,33 +669,40 @@ const OURA = {
       per-unit manufacturing cost came down. It is not a clean trend.</p>
     </div>
 
-    <div class="card"><h3>Hardware build: units times price</h3>
-      ${table([
-        ['', ['FY26E','FY27E','FY28E','FY29E','FY30E','FY35E'], 'hd'],
-        ['Rings sold (m)', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>x.units.toFixed(2))],
-        ['  growth', ['', ...[y[1],y[2],y[3],y[4],y[9]].map(x=>p0(x.g))]],
-        ['Revenue per ring', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>d0(x.rpu))],
-        ['Hardware revenue', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>mm(x.hw)), 'tot'],
-      ])}
+    <div class="card"><h3>Hardware build: units times price <span class="pill act">A actual · E model</span></h3>
+      ${(function(){ const f=[y[0],y[1],y[2],y[3],y[4],y[9]]; return tbl([
+        ['', ['FY24A','FY25A','FY26E','FY27E','FY28E','FY29E','FY30E','FY35E'], 'hd'],
+        ['Rings sold (m)', [h.fy24.units.toFixed(2), h.fy25.units.toFixed(2), ...f.map(x=>x.units.toFixed(2))]],
+        ['  growth', ['n/d', p0(h.fy25.units/h.fy24.units-1), ...f.map(x=>p0(x.i===0? x.units/h.fy25.units-1 : x.g))], 'muted'],
+        ['Revenue per ring', [d0(h.fy24.rpu), d0(h.fy25.rpu), ...f.map(x=>d0(x.rpu))]],
+        ['Hardware revenue', [mm(h.fy24.hw), mm(h.fy25.hw), ...f.map(x=>mm(x.hw))], 'tot'],
+      ]); })()}
+      <p class="note">The jump-off matters here. Units grew 130% in FY25 and the model has FY26E at
+      74%, so the fade starts from a number that is already halving. RPU has gone the other way in
+      every disclosed period.</p>
     </div>
 
     <div class="card"><h3>Member roll-forward: where the annuity comes from</h3>
-      ${table([
-        ['', ['FY26E','FY27E','FY28E','FY29E','FY30E','FY35E'], 'hd'],
-        ['Members, opening', [h.fy25.memEnd,y[0].memEnd,y[1].memEnd,y[2].memEnd,y[3].memEnd,y[8].memEnd].map(v=>u1(v))],
-        ['Rings sold', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>u2(x.units))],
-        ['  less repeat purchases', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>'('+u2(x.units*x.rep)+')'), 'muted'],
-        ['  times conversion at '+p0(a.convRate), [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>u2(x.newM)), 'muted'],
-        ['New members added', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>u2(x.newM))],
-        ['Churned members', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>'('+u2(x.churn)+')')],
-        ['Members, closing', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>u1(x.memEnd)), 'tot'],
-        ['Retention applied', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>p1(x.ret)), 'muted'],
-        ['Membership ARPU', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>d0(x.arpu))],
-        ['Membership revenue', [y[0],y[1],y[2],y[3],y[4],y[9]].map(x=>mm(x.mem)), 'tot'],
-      ])}
-      <p class="note">Churn is applied to the opening base only, so the closing number is the disclosed roll-forward
-      shape rather than a cohort model. At the default conversion of ${p0(a.convRate)} the build lands on 2.99m members
-      at FY25 close against 2.9m reported, and roughly 5.1m at 30 June 26 against 5.0m reported.</p>
+      ${(function(){ const f=[y[0],y[1],y[2],y[3],y[4],y[9]];
+        const arpu25 = h.fy25.mem/((h.fy24.memEnd+h.fy25.memEnd)/2); return tbl([
+        ['', ['FY25A','FY26E','FY27E','FY28E','FY29E','FY30E','FY35E'], 'hd'],
+        ['Members, opening', [u1(h.fy24.memEnd), ...[h.fy25.memEnd,y[0].memEnd,y[1].memEnd,y[2].memEnd,y[3].memEnd,y[8].memEnd].map(v=>u1(v))]],
+        ['Rings sold', [u2(h.fy25.units), ...f.map(x=>u2(x.units))]],
+        ['  less repeat purchases', ['('+u2(h.fy25.units*h.fy25.repeat)+')', ...f.map(x=>'('+u2(x.units*x.rep)+')')], 'muted'],
+        ['  times conversion at '+p0(a.convRate), ['n/d', ...f.map(x=>u2(x.newM))], 'muted'],
+        ['New members added', ['n/d', ...f.map(x=>u2(x.newM))]],
+        ['Churned members', ['n/d', ...f.map(x=>'('+u2(x.churn)+')')]],
+        ['Members, closing', [u1(h.fy25.memEnd), ...f.map(x=>u1(x.memEnd))], 'tot'],
+        ['Retention applied', ['n/d', ...f.map(x=>p1(x.ret))], 'muted'],
+        ['Membership ARPU', [d0(arpu25), ...f.map(x=>d0(x.arpu))]],
+        ['Membership revenue', [mm(h.fy25.mem), ...f.map(x=>mm(x.mem))], 'tot'],
+      ]); })()}
+      <p class="note">In the FY25 actual column, opening, rings, repeat share, closing and membership
+      revenue are all disclosed. Additions and churn are marked n/d because Oura discloses neither,
+      and one equation cannot solve for both. FY25 ARPU is derived as membership revenue over average
+      members. Churn is applied to the opening base only, so the closing number follows the disclosed
+      roll-forward shape rather than a cohort model. At the default conversion of ${p0(a.convRate)} the build lands
+      on 2.99m members at FY25 close against 2.9m reported, and roughly 5.1m at 30 June 26 against 5.0m reported.</p>
     </div>
 
     <div class="card"><h3>Mix, and how members are won <span class="pill">9M FY26, as disclosed</span></h3>
@@ -684,7 +720,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Penetration and the addressable set</h3>
-      ${table([
+      ${tbl([
         ['', ['Figure','Source'], 'hd'],
         ['Global wearable units, 12m to Jun-26', ['212m','IDC, cited in S-1']],
         ['Oura rings sold, same period', ['3.6m','S-1']],
@@ -703,7 +739,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Engagement and cohort quality <span class="pill">as disclosed</span></h3>
-      ${table([
+      ${tbl([
         ['Ring activations converting to paid', ['&gt;94%']],
         ['DAU to MAU ratio', ['~65%']],
         ['App opens per day, per member', ['&gt;3.5']],
@@ -756,7 +792,7 @@ const OURA = {
     ])}
 
     <div class="card"><h3>The acquisition event <span class="pill">FY26E, per ring sold</span></h3>
-      ${table([
+      ${tbl([
         ['Revenue per ring (RPU)', [d0(y.rpu)]],
         ['Cost of hardware', ['('+d0(y.rpu*(1-y.hwGM))+')'], 'muted'],
         ['Hardware gross profit', [d0(u.hwGPunit)], 'tot'],
@@ -770,7 +806,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Lifetime value build</h3>
-      ${table([
+      ${tbl([
         ['', ['Per member'], 'hd'],
         ['Membership ARPU', [d0(y.arpu)]],
         ['Membership gross margin', [p0(a.memGM)], 'muted'],
@@ -792,7 +828,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>How much of this rests on retention</h3>
-      ${table([
+      ${tbl([
         ['12-month retention', ['78%','82%','85%','88%','91%'], 'hd'],
         ['Implied member life', retSens.map(s=>s.life.toFixed(1)+'y')],
         ['Lifetime value', retSens.map(s=>d0(s.ltv))],
@@ -804,7 +840,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Why this structure is unusual</h3>
-      ${table([
+      ${tbl([
         ['', ['Oura','Typical consumer subscription'], 'hd'],
         ['CAC recovered at', [u.dayOne>=0?'point of sale':'month '+payMonths, 'month 6 to 18']],
         ['Working capital', ['negative, customers fund growth', 'positive']],
@@ -857,7 +893,7 @@ const OURA = {
     ])}
 
     <div class="card"><h3>Income statement as filed <span class="pill">$m</span></h3>
-      ${table([
+      ${tbl([
         ['', ['FY2024','FY2025','9M FY25','9M FY26','LTM Jun-26'], 'hd'],
         ['Hardware revenue', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>mm1(x.hw))],
         ['Membership revenue', [h.fy24,h.fy25,h.n9m25,h.n9m26,h.ttm].map(x=>mm1(x.mem))],
@@ -883,7 +919,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>FY2026E: what the model implies for the fourth quarter</h3>
-      ${table([
+      ${tbl([
         ['', ['9M FY26 actual','Q4 FY26E','FY2026E','Q4 FY25 actual'], 'hd'],
         ['Hardware revenue', [mm1(h.n9m26.hw), mm1(q.hw), mm1(y[0].hw), mm1(q.pyHw)]],
         ['Membership revenue', [mm1(h.n9m26.mem), mm1(q.mem), mm1(y[0].mem), mm1(q.pyMem)]],
@@ -909,33 +945,35 @@ const OURA = {
       ${p0(a.sbcFwd)} of revenue from FY27, fading to ${p0(a.sbcTerm)}, and charges it as a real cost.</p>
     </div>
 
-    <div class="card"><h3>Forecast income statement <span class="pill">$m, model</span></h3>
-      ${table([
-        ['', pick.map(x=>x.lbl), 'hd'],
-        ['Hardware revenue', pick.map(x=>mm(x.hw))],
-        ['Membership revenue', pick.map(x=>mm(x.mem))],
-        ['Total revenue', pick.map(x=>mm(x.rev)), 'tot'],
-        ['  growth', pick.map(x=>p0(x.revG)), 'muted'],
-        ['  membership mix', pick.map(x=>p0(x.memMix)), 'muted'],
-        ['Gross profit', pick.map(x=>mm(x.gp))],
-        ['  gross margin', pick.map(x=>p1(x.gm)), 'muted'],
-        ['Sales and marketing', pick.map(x=>'('+mm(x.sm)+')')],
-        ['Research and development', pick.map(x=>'('+mm(x.rd)+')')],
-        ['General and administrative', pick.map(x=>'('+mm(x.ga)+')')],
-        ['Incremental share-based comp', pick.map(x=>x.sbcInc>0?'('+mm(x.sbcInc)+')':'-')],
-        ['Income from operations', pick.map(x=>mm(x.ebit)), 'tot'],
-        ['  operating margin', pick.map(x=>p1(x.ebitM)), 'muted'],
-        ['EBITDA', pick.map(x=>mm(x.ebitda))],
-        ['  EBITDA margin', pick.map(x=>p1(x.ebitdaM)), 'muted'],
-        ['Adjusted EBITDA (company basis)', pick.map(x=>mm(x.adjE)), 'tot'],
-      ])}
-      <p class="note">EBITDA here is operating income plus D&A with share-based compensation left in as a cost, which is
+    <div class="card"><h3>Income statement, actual then forecast <span class="pill act">A actual · E model</span></h3>
+      ${(function(){ const A=[h.fy24,h.fy25];
+        const col = (fa, ff) => [...A.map(fa), ...pick.map(ff)]; return tbl([
+        ['', [...A.map(x=>x.lbl.replace('FY20','FY')+'A'), ...pick.map(x=>x.lbl.replace('FY20','FY'))], 'hd'],
+        ['Hardware revenue', col(x=>mm(x.hw), x=>mm(x.hw))],
+        ['Membership revenue', col(x=>mm(x.mem), x=>mm(x.mem))],
+        ['Total revenue', col(x=>mm(x.rev), x=>mm(x.rev)), 'tot'],
+        ['  growth', ['n/d', p0(h.fy25.rev/h.fy24.rev-1), ...pick.map(x=>p0(x.revG))], 'muted'],
+        ['  membership mix', col(x=>p0(x.mem/x.rev), x=>p0(x.memMix)), 'muted'],
+        ['Gross profit', col(x=>mm(x.gp), x=>mm(x.gp))],
+        ['  gross margin', col(x=>p1(x.gm), x=>p1(x.gm)), 'muted'],
+        ['Sales and marketing', col(x=>'('+mm(x.sm)+')', x=>'('+mm(x.sm)+')')],
+        ['Research and development', col(x=>'('+mm(x.rd)+')', x=>'('+mm(x.rd)+')')],
+        ['General and administrative', col(x=>'('+mm(x.ga)+')', x=>'('+mm(x.ga)+')')],
+        ['Incremental share-based comp', [...A.map(()=>'-'), ...pick.map(x=>x.sbcInc>0?'('+mm(x.sbcInc)+')':'-')]],
+        ['Income from operations', col(x=>mm(x.ebit), x=>mm(x.ebit)), 'tot'],
+        ['  operating margin', col(x=>p1(x.ebit/x.rev), x=>p1(x.ebitM)), 'muted'],
+        ['EBITDA', col(x=>mm(x.ebit+x.da), x=>mm(x.ebitda))],
+        ['  EBITDA margin', col(x=>p1((x.ebit+x.da)/x.rev), x=>p1(x.ebitdaM)), 'muted'],
+        ['Adjusted EBITDA (company basis)', col(x=>mm(x.adjE), x=>mm(x.adjE)), 'tot'],
+      ]); })()}
+      <p class="note">The two actual columns are the jump-off point, on exactly the same line definitions as the
+      forecast. EBITDA here is operating income plus D&amp;A with share-based compensation left in as a cost, which is
       how the comparable multiples on the valuation tab are calculated. Adjusted EBITDA adds SBC back to match the
-      company's own definition, and is shown only so the FY26E figure can be tied to the filing.</p>
+      company's own definition. Scroll the table sideways for the years between FY30E and FY35E.</p>
     </div>
 
     <div class="card"><h3>Common size <span class="pill">% of revenue</span></h3>
-      ${table([
+      ${tbl([
         ['', ['FY2024','FY2025','9M FY26','FY26E','FY30E','FY35E'], 'hd'],
         ['Gross profit', [p1(h.fy24.gm),p1(h.fy25.gm),p1(h.n9m26.gm),p1(y[0].gm),p1(y[4].gm),p1(y[9].gm)]],
         ['Sales and marketing', [cs(h.fy24.sm,h.fy24.rev),cs(h.fy25.sm,h.fy25.rev),cs(h.n9m26.sm,h.n9m26.rev),cs(y[0].sm,y[0].rev),cs(y[4].sm,y[4].rev),cs(y[9].sm,y[9].rev)]],
@@ -946,7 +984,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Balance sheet and cash flow anchors <span class="pill">at 30 Jun 26, $m</span></h3>
-      ${table([
+      ${tbl([
         ['Cash and cash equivalents', [mm1(r.BS.cash)]],
         ['Total debt', [mm1(r.BS.debt)], 'muted'],
         ['  of which drawn revolver', [mm1(r.BS.revolver)], 'muted'],
@@ -996,22 +1034,25 @@ const OURA = {
       ['Terminal share of value', p0(d.tvShare), d.tvShare>0.75?'high, as expected for a grower':'balanced'],
     ])}
 
-    <div class="card"><h3>Free cash flow build <span class="pill">$m, unlevered</span></h3>
-      ${table([
-        ['', fc.map(x=>x.lbl.replace('E','')), 'hd'],
-        ['Revenue', fc.map(x=>mm(x.rev))],
-        ['Income from operations', fc.map(x=>mm(x.ebit))],
-        ['  operating margin', fc.map(x=>p1(x.ebitM)), 'muted'],
-        ['Less tax at '+p0(a.taxRate), fc.map(x=>'('+mm(x.ebit*a.taxRate)+')')],
-        ['NOPAT', fc.map(x=>mm(x.nopat)), 'tot'],
-        ['Plus D&A', fc.map(x=>mm(x.da))],
-        ['Less capex', fc.map(x=>'('+mm(x.capex)+')')],
-        ['Less change in working capital', fc.map(x=>(x.dNWC<0?'+'+mm(-x.dNWC):'('+mm(x.dNWC)+')'))],
-        ['Unlevered free cash flow', fc.map(x=>mm(x.fcf)), 'tot'],
-        ['  as % of revenue', fc.map(x=>p1(x.fcf/x.rev)), 'muted'],
-      ])}
-      <p class="note">Working capital is a source of cash at ${p0(-a.nwcPct)} of each incremental revenue dollar, well below the
-      rate observed in 9M FY26, because deferred revenue and accrual gearing decay as growth slows. Share-based
+    <div class="card"><h3>Free cash flow build <span class="pill act">A actual · E model</span></h3>
+      ${(function(){ const all=[...r.hist, y[0], ...fc]; return tbl([
+        ['', [...r.hist.map(x=>x.lbl.replace('FY20','FY')+'A'), ...[y[0],...fc].map(x=>x.lbl.replace('FY20','FY'))], 'hd'],
+        ['Revenue', all.map(x=>mm(x.rev))],
+        ['Income from operations', all.map(x=>mm(x.ebit))],
+        ['  operating margin', all.map(x=>p1(x.ebitM)), 'muted'],
+        ['Less tax at '+p0(a.taxRate), all.map(x=>'('+mm(x.ebit*a.taxRate)+')')],
+        ['NOPAT', all.map(x=>mm(x.nopat)), 'tot'],
+        ['Plus D&A', all.map(x=>mm(x.da))],
+        ['Less capex', all.map(x=>'('+mm(x.capex)+')')],
+        ['Less change in working capital', all.map(x=>(x.dNWC<0?'+'+mm(-x.dNWC):'('+mm(x.dNWC)+')'))],
+        ['Unlevered free cash flow', all.map(x=>mm(x.fcf)), 'tot'],
+        ['  as % of revenue', all.map(x=>p1(x.fcf/x.rev)), 'muted'],
+      ]); })()}
+      <p class="note">The two actual columns rebuild FY24 and FY25 on the same definition, using the model's normalised
+      tax rate rather than the reported one, which was distorted. They show how much of this business's cash comes from
+      working capital: FY25 released ${mm(r.H.fy25.wcSrc)} against income from operations of ${mm(r.H.fy25.ebit)}. That is
+      ${p0(r.H.fy25.wcSrc/(r.H.fy25.rev-r.H.fy24.rev))} of the year's incremental revenue. The forecast assumes only
+      ${p0(-a.nwcPct)}, because deferred revenue and accrual gearing decay as growth slows. Share-based
       compensation is charged as an expense inside operating income rather than added back, which is the conservative
       treatment and avoids double-counting against the diluted share count.</p>
     </div>
@@ -1020,9 +1061,9 @@ const OURA = {
       ${colBars(fcfLbls, [{label:'Unlevered FCF', data:fc.map(x=>x.fcf), color:CLR.hw}], v=>mm(v), {h:190, noLegend:true})}
     </div>
 
-    <div class="card"><h3>Discounting</h3>
-      ${table([
-        ['', fc.map(x=>x.lbl.replace('E','')), 'hd'],
+    <div class="card"><h3>Discounting <span class="pill">forecast years only</span></h3>
+      ${tbl([
+        ['', fc.map(x=>x.lbl.replace('FY20','FY')), 'hd'],
         ['Unlevered FCF', d.rows.map(x=>mm(x.fcf))],
         ['Discount factor', d.rows.map(x=>x.df.toFixed(3))],
         ['Present value', d.rows.map(x=>mm(x.pv)), 'tot'],
@@ -1032,7 +1073,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Terminal value <span class="pill">two methods, blended</span></h3>
-      ${table([
+      ${tbl([
         ['', ['Value at FY35','Weight','PV'], 'hd'],
         ['Perpetuity growth at '+p1(a.tgr), [mm(d.tvG), p0(a.ggWeight), mm(d.tvG*a.ggWeight*d.dfT)]],
         ['Exit multiple at '+a.exitMult.toFixed(1)+'x FY35E EBITDA', [mm(d.tvM), p0(1-a.ggWeight), mm(d.tvM*(1-a.ggWeight)*d.dfT)]],
@@ -1046,7 +1087,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Enterprise value to value per share</h3>
-      ${table([
+      ${tbl([
         ['PV of forecast free cash flow', [mm(d.pvFcf)]],
         ['PV of terminal value', [mm(d.pvTV)]],
         ['Enterprise value', [mm(d.ev)], 'tot'],
@@ -1064,7 +1105,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Sensitivity <span class="pill">value per share</span></h3>
-      ${table([
+      ${tbl([
         ['WACC ↓ / terminal growth →', r.gRange.map(g=>p1(g)), 'hd'],
         ...r.sens.map((row,i)=>[p1(r.wRange[i]), row.map(v=>v===null?'n.m.':d0(v)), r.wRange[i]===a.wacc?'tot':''])
       ])}
@@ -1074,7 +1115,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Scenario range</h3>
-      ${table([
+      ${tbl([
         ['', ['Enterprise value','Value per share','Implied EV/LTM revenue'], 'hd'],
         ['WACC '+p1(a.wacc+0.015), [mm(r.dcfLo.ev), d2(r.dcfLo.ps), (r.dcfLo.ev/r.H.ttm.rev).toFixed(1)+'x']],
         ['WACC '+p1(a.wacc)+' (base)', [mm(d.ev), d2(d.ps), (d.ev/r.H.ttm.rev).toFixed(1)+'x'], 'tot'],
@@ -1120,7 +1161,7 @@ const OURA = {
     ])}
 
     <div class="card"><h3>Trading comparables <span class="pill">7 Sep 2026</span></h3>
-      ${table([
+      ${tbl([
         ['', ['EV','LTM rev','Growth','GM','EBITDA %','EV/Rev','EV/EBITDA'], 'hd'],
         ['<b>Wearables and consumer hardware</b>', ['','','','','','',''], 'muted'],
         ...compRows('Wearables & consumer hardware'),
@@ -1138,7 +1179,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>What the comp set is actually paying for</h3>
-      ${table([
+      ${tbl([
         ['', ['EV/Revenue','Growth','EBITDA margin','Rule of 40','EV/Rev per point of growth'], 'hd'],
         ...c.slice().sort((x,y)=>y.evs-x.evs).map(x=>[x.t,
           [x.evs.toFixed(1)+'x', p0(x.g), p0(x.ebitdaM), (x.r40*100).toFixed(0), x.evsPerG?x.evsPerG.toFixed(2):'nm']]),
@@ -1152,7 +1193,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Two ways of adjusting the comps to Oura</h3>
-      ${table([
+      ${tbl([
         ['', ['Method','Implied EV/Rev','Implied EV','Per share'], 'hd'],
         ['Growth adjusted', ['Median '+cs.evsPerG.toFixed(2)+'x per growth point × '+p0(o.g),
           r.impliedG.toFixed(1)+'x', mm(r.evGrowthAdj), d2(psOf(r.evGrowthAdj))]],
@@ -1166,7 +1207,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Precedent transaction</h3>
-      ${table([
+      ${tbl([
         ['', ['Date','EV','EV/Revenue','EV/EBITDA'], 'hd'],
         [r.PRECEDENT.n, [r.PRECEDENT.date, mm(r.PRECEDENT.ev), r.PRECEDENT.evs.toFixed(1)+'x', r.PRECEDENT.evebitda.toFixed(1)+'x']],
         ['Applied to Oura LTM revenue', ['', mm(r.PRECEDENT.evs*o.rev), r.PRECEDENT.evs.toFixed(1)+'x', ''], 'tot'],
@@ -1187,7 +1228,7 @@ const OURA = {
     </div>
 
     <div class="card"><h3>Triangulation</h3>
-      ${table([
+      ${tbl([
         ['', ['Enterprise value','Per share','EV / LTM revenue'], 'hd'],
         ...r.field.map(f=>[f.label, [mm((f.lo+f.hi)/2), d2(psOf((f.lo+f.hi)/2)), ((f.lo+f.hi)/2/o.rev).toFixed(1)+'x']]),
         ['Midpoint of methods', [mm(r.fieldMid), d2(psOf(r.fieldMid)), (r.fieldMid/o.rev).toFixed(1)+'x'], 'tot'],
