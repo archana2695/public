@@ -385,8 +385,8 @@ const OURA = {
       {id:'mEbHi',     label:'EV / FY29E EBITDA — high',     type:'int', step:1,   unit:'x'},
     ]},
     {label:'Acquisition efficiency', tabs:['unit'], inputs:[
-      {id:'smAcqShare',label:'S&M that is member acquisition',type:'pct',step:5},
-      {id:'organic',   label:'Members acquired organically',  type:'pct',step:5},
+      {id:'cacBasis',  label:'CAC as % of hardware gross profit', type:'pct', step:5},
+      {id:'organic',   label:'Members acquired organically',      type:'pct', step:5},
     ]},
   ],
 
@@ -401,7 +401,7 @@ const OURA = {
     taxRate:0.24, daPct:0.022, capexPct:0.035, nwcPct:-0.04, netDebt:8.4, shares:175.2,
     wacc:0.105, tgr:0.03, exitMult:16, ggWeight:0.5,
     mRevLo:7.5, mRevHi:13, mFwdLo:5.5, mFwdHi:9.5, mEbLo:22, mEbHi:34,
-    smAcqShare:0.75, organic:0.40,
+    cacBasis:1.00, organic:0.40,
   },
 
   presets:{
@@ -456,8 +456,8 @@ const OURA = {
     mFwdHi:'Upper bound anchored on DexCom and Garmin forward multiples, grossed up for Oura growing four times faster.',
     mEbLo:'EBITDA multiples on FY29E, by which point the model has Oura at a credible margin. Discounted back three years at the WACC.',
     mEbHi:'Top of the range reflects the Masimo takeout at 26.6x EV/EBITDA plus a growth premium.',
-    smAcqShare:'Not disclosed. S&M covers brand, retail support and channel programmes as well as member acquisition, so only part of it is true CAC. Flex this to test how hard the day-one payback claim really is.',
-    organic:'S-1: approximately 40% of new members were acquired organically in 9M FY26 through word of mouth and the refer-a-friend programme.',
+    cacBasis:'Oura never quantifies CAC anywhere in the S-1. What it does say, repeatedly, is that "hardware gross profit offsets our customer acquisition costs" and that hardware economics "recover customer acquisition costs on day one". At 100% that sentence is read as an equality, which makes CAC the most the claim can possibly permit and sets day-one contribution to exactly zero. It is a deliberate ceiling, not an estimate: the reconciliation below shows the business does not have enough sales and marketing spend to actually reach it, so true CAC is lower and the real day-one contribution is positive. Dial this down to test a specific view.',
+    organic:'S-1: approximately 40% of new members were acquired organically in 9M FY26 through word of mouth and the refer-a-friend programme. These members cost close to nothing, so the CAC on the members Oura actually buys is this much higher than the blended figure.',
   },
   /* -------------------------------------------------------------- compute */
   compute(a){
@@ -596,22 +596,47 @@ const OURA = {
               capex:h.capex, dNWC:-h.wcSrc, fcf:nopat+h.da-h.capex+h.wcSrc, actual:true}; };
     const hist = [histFcf(H.fy24), histFcf(H.fy25)];
 
-    /* ---- unit economics ---- */
-    const hwGPunit = y26.rpu*y26.hwGM;
-    const cacBlend = (y26.sm*a.smAcqShare)/y26.newM;
-    const cacPaid  = a.organic<1 ? cacBlend/(1-a.organic) : cacBlend;
-    const memGPyr  = y26.arpu*a.memGM;
-    const life     = 1/(1-a.retention);
-    let ltvMem=0; for(let t=0;t<25;t++){ ltvMem += memGPyr*Math.pow(a.retention,t)/Math.pow(1+a.wacc,t+0.5); }
-    const repeatHW = hwGPunit*(a.repeat26/(1-a.repeat26))*Math.min(life,8)/8*1.0;
-    const ltv      = ltvMem + hwGPunit + repeatHW;
-    const ltvCac   = ltv/cacBlend;
-    const dayOne   = hwGPunit - cacBlend;
+    /* ---- unit economics ----
+       CAC is anchored to the company's own claim rather than to a share of S&M, because the
+       S-1 quantifies CAC nowhere. Everything below is per NEW MEMBER, on the rings that new
+       members actually buy, so the units reconcile. ---- */
+    const hwGPunit  = y26.rpu*y26.hwGM;                    // per ring
+    const newRings  = y26.units*(1-y26.rep);               // rings bought by people who are not yet members
+    const ringsPerNM= newRings/y26.newM;                   // >1 because ~10% of activations never convert
+    const gpPerNM   = newRings*hwGPunit/y26.newM;          // hardware GP a new member brings with them
+
+    const cac       = gpPerNM*a.cacBasis;                  // 100% = the S-1 claim read as an equality
+    const dayOne    = gpPerNM - cac;
+    const cacPaid   = a.organic<1 ? cac/(1-a.organic) : cac;
+    const dayOnePaid= gpPerNM - cacPaid;
+
+    // reconciliation: what that CAC would require of the sales and marketing line
+    const acqSpend  = cac*y26.newM;
+    const smShare   = acqSpend/y26.sm;                     // >1 means the claim cannot bind per-unit
+    const cacSmCap  = y26.sm/y26.newM;                     // CAC if every S&M dollar were acquisition
+
+    // aggregate coverage, the version of the claim that is true on disclosed numbers
+    const cover = h => { const g = h.gp - h.mem*a.memGM; return {lbl:h.lbl, hwGP:g, sm:h.sm, x:g/h.sm}; };
+    const coverage = [cover(H.fy24), cover(H.fy25), cover(H.n9m26),
+                      {lbl:'FY2026E', hwGP:y26.units*hwGPunit, sm:y26.sm, x:y26.units*hwGPunit/y26.sm}];
+
+    // lifetime value, all discounted on one annuity factor so the pieces are comparable
+    const memGPyr   = y26.arpu*a.memGM;
+    const life      = 1/(1-a.retention);
+    let af=0; for(let t=0;t<25;t++) af += Math.pow(a.retention,t)/Math.pow(1+a.wacc,t+0.5);
+    const ltvMem    = memGPyr*af;
+    const repeatYr  = (y26.units*y26.rep)/y26.memAvg*hwGPunit;   // repeat-ring GP per member per year
+    const repeatHW  = repeatYr*af;
+    const ltv       = ltvMem + gpPerNM + repeatHW;
+    const ltvCac    = ltv/cac;
+    const payMonths = dayOne>=0 ? 0 : Math.ceil(-dayOne/(memGPyr/12));
 
     return {yrs, labels, y26, y27, y29, yT, N, q4, dcf, dcfLo, dcfHi, sens, wRange, gRange, hist,
             comps, compStats, ouraLtm, regG, regR, impliedG, impliedR, evGrowthAdj, evR40,
             field, fieldLo, fieldHi, fieldMid,
-            unit:{hwGPunit, cacBlend, cacPaid, memGPyr, life, ltvMem, repeatHW, ltv, ltvCac, dayOne},
+            unit:{hwGPunit, newRings, ringsPerNM, gpPerNM, cac, dayOne, cacPaid, dayOnePaid,
+                  acqSpend, smShare, cacSmCap, coverage, memGPyr, life, af, ltvMem, repeatYr,
+                  repeatHW, ltv, ltvCac, payMonths},
             H, BS, PRECEDENT};
   },
   /* ----------------------------------------------------------------- tabs */
@@ -773,58 +798,112 @@ const OURA = {
   {id:'unit', label:'Unit economics', render(r,a){
     const u=r.unit, y=r.y26;
     const retSens=[0.78,0.82,0.85,0.88,0.91].map(ret=>{
-      const gp=y.arpu*a.memGM; let lv=0; for(let t=0;t<25;t++) lv+=gp*Math.pow(ret,t)/Math.pow(1+a.wacc,t+0.5);
-      const tot=lv+u.hwGPunit+u.repeatHW; return {ret, ltv:tot, ratio:tot/u.cacBlend, life:1/(1-ret)};
+      let af=0; for(let t=0;t<25;t++) af += Math.pow(ret,t)/Math.pow(1+a.wacc,t+0.5);
+      const tot=u.memGPyr*af + u.gpPerNM + u.repeatYr*af;
+      return {ret, ltv:tot, ratio:tot/u.cac, life:1/(1-ret)};
     });
-    const payMonths = u.dayOne>=0 ? 0 : Math.ceil(-u.dayOne/(u.memGPyr/12));
+    const over = u.smShare > 1;
 
     return `
     <h2 class="sec">One member, from first ring to steady state</h2>
-    <p class="lede">The company's claim is that hardware gross profit recovers customer acquisition cost on day one and
-    the membership is pure annuity on top. Here is that claim built from the numbers, with the assumption it rests on
-    exposed as an input.</p>
+    <p class="lede">Oura never puts a number on customer acquisition cost. It says, in four places, that
+    hardware gross profit recovers it on day one. So CAC here is anchored to that sentence rather than
+    guessed from a share of sales and marketing, and the reconciliation below tests whether the sentence
+    can bear the weight.</p>
 
     ${kpiRow([
-      ['Hardware GP per ring', d0(u.hwGPunit), d0(y.rpu)+' RPU at '+p0(y.hwGM)+' margin'],
-      ['Blended CAC', d0(u.cacBlend), p0(a.smAcqShare)+' of S&M over new members'],
-      ['Day-one surplus', (u.dayOne>=0?'+':'')+d0(u.dayOne), u.dayOne>=0?'CAC recovered at the till':'payback in ~'+payMonths+' months'],
+      ['Hardware GP per member', d0(u.gpPerNM), u.ringsPerNM.toFixed(2)+' rings at '+d0(u.hwGPunit)+' each'],
+      ['Implied CAC', d0(u.cac), p0(a.cacBasis)+' of that gross profit'],
+      ['Day-one contribution', (u.dayOne>=0?'+':'')+d0(u.dayOne), a.cacBasis>=1?'zero by construction':'headroom on the claim'],
       ['LTV / CAC', u.ltvCac.toFixed(1)+'x', d0(u.ltv)+' LTV, '+u.life.toFixed(1)+'yr life'],
     ])}
 
-    <div class="card"><h3>The acquisition event <span class="pill">FY26E, per ring sold</span></h3>
+    <div class="card"><h3>The acquisition event <span class="pill">FY26E, per new member</span></h3>
       ${tbl([
-        ['Revenue per ring (RPU)', [d0(y.rpu)]],
-        ['Cost of hardware', ['('+d0(y.rpu*(1-y.hwGM))+')'], 'muted'],
-        ['Hardware gross profit', [d0(u.hwGPunit)], 'tot'],
-        ['Customer acquisition cost', ['('+d0(u.cacBlend)+')']],
+        ['Rings sold', [u2(y.units)]],
+        ['  less repeat purchases at '+p0(y.rep), ['('+u2(y.units*y.rep)+')'], 'muted'],
+        ['Rings bought by non-members', [u2(u.newRings)]],
+        ['  of which activate and pay, at '+p0(a.convRate), [u2(y.newM)], 'muted'],
+        ['Rings per new member', [u.ringsPerNM.toFixed(2)]],
+        ['Hardware gross profit per ring', [d0(u.hwGPunit)], 'muted'],
+        ['Hardware gross profit per new member', [d0(u.gpPerNM)], 'tot'],
+        ['Customer acquisition cost', ['('+d0(u.cac)+')']],
         ['Day-one contribution', [(u.dayOne>=0?'+':'')+d0(u.dayOne)], 'tot'],
       ])}
-      <p class="note">CAC is derived, not disclosed. Total S&M of ${mm(y.sm)} in FY26E, of which ${p0(a.smAcqShare)} is treated
-      as member acquisition, spread over ${u2(y.newM)} new members. On the ${p0(1-a.organic)} of members who are actually
-      bought rather than referred, the implied cost is ${d0(u.cacPaid)} each, and the day-one surplus on that subset is
-      ${(u.hwGPunit-u.cacPaid>=0?'+':'')+d0(u.hwGPunit-u.cacPaid)}. That is the number to stress, not the blended one.</p>
+      <p class="note">Everything is stated per new member, including the gross profit, so the two sides of
+      the subtraction share a denominator. A new member arrives with ${u.ringsPerNM.toFixed(2)} rings rather than one,
+      because roughly ${p0(1-a.convRate)} of activations never convert to a paid membership and those rings still earn
+      their margin.</p>
     </div>
 
-    <div class="card"><h3>Lifetime value build</h3>
+    <div class="card"><h3>Can the business actually spend that much? <span class="pill act">the reconciliation</span></h3>
       ${tbl([
-        ['', ['Per member'], 'hd'],
+        ['CAC at '+p0(a.cacBasis)+' of hardware gross profit', [d0(u.cac)]],
+        ['× new members added in FY26E', [u2(y.newM)], 'muted'],
+        ['Implied acquisition spend', [mm(u.acqSpend)], 'tot'],
+        ['Total sales and marketing, FY26E', [mm(y.sm)]],
+        ['Implied share of the S&M line', [p0(u.smShare)], 'tot'],
+        ['CAC if every S&M dollar were acquisition', [d0(u.cacSmCap)], 'muted'],
+      ])}
+      <p class="note">${over
+        ? `<b class="flag">This is the finding.</b> Reading the claim as a per-member equality needs ${p0(u.smShare)} of the
+           entire sales and marketing line, and S&amp;M also has to cover brand, retail support and channel programmes.
+           The business cannot spend that much acquiring members, so the true CAC is at most ${d0(u.cacSmCap)} and the real
+           day-one contribution is comfortably positive. The ceiling is not binding.`
+        : `At this setting the implied acquisition spend is ${p0(u.smShare)} of the S&amp;M line, which is achievable, so the
+           day-one claim is doing real work at this CAC.`}</p>
+    </div>
+
+    <div class="card"><h3>The version of the claim that holds without any assumption</h3>
+      ${tbl([
+        ['', ['Hardware gross profit','Total S&M','Covered'], 'hd'],
+        ...u.coverage.map(c=>[c.lbl, [mm(c.hwGP), mm(c.sm), c.x.toFixed(2)+'x']]),
+      ])}
+      <p class="note">Hardware gross profit alone covers the <i>entire</i> sales and marketing line in every period,
+      before a dollar of membership revenue. That needs no CAC definition and no denominator, which is very likely
+      what the S-1 sentence actually means. The per-member work above is a decomposition of it, not a restatement.</p>
+    </div>
+
+    <div class="card"><h3>On the members Oura actually buys <span class="pill">achievable spend, not the ceiling</span></h3>
+      ${(function(){ const shares=[0.5,0.75,1.0];
+        const row = fn => shares.map(sh=>{ const cacB=(y.sm*sh)/y.newM; return fn(cacB, cacB/(1-a.organic)); });
+        return tbl([
+        ['S&M treated as member acquisition', shares.map(sh=>p0(sh)), 'hd'],
+        ['Implied acquisition spend', shares.map(sh=>mm(y.sm*sh)), 'muted'],
+        ['Blended CAC', row(b=>d0(b))],
+        ['  day-one contribution', row(b=>(u.gpPerNM-b>=0?'+':'')+d0(u.gpPerNM-b)), 'muted'],
+        ['CAC on paid-acquired members only', row((b,pd)=>d0(pd))],
+        ['  day-one contribution', row((b,pd)=>(u.gpPerNM-pd>=0?'+':'')+d0(u.gpPerNM-pd)), 'muted'],
+        ['Hardware gross profit per new member', shares.map(()=>d0(u.gpPerNM)), 'tot'],
+      ]); })()}
+      <p class="note">This card deliberately ignores the CAC input and works back from the S&amp;M line instead, because
+      the ceiling above cannot actually be spent. Roughly ${p0(a.organic)} of new members arrive through word of mouth and the
+      refer-a-friend programme at close to no cost, so loading the whole acquisition budget onto the ${p0(1-a.organic)} that Oura
+      really buys is the harder test. On a plausible ${p0(0.75)} of S&amp;M the paid-acquired member still clears at
+      ${(function(){const b=(y.sm*0.75)/y.newM;return (u.gpPerNM-b/(1-a.organic)>=0?'+':'')+d0(u.gpPerNM-b/(1-a.organic));})()}. It only turns
+      negative if you assume essentially every marketing dollar is member acquisition, which would leave nothing for brand,
+      retail support or the ${p0(0.49)} of hardware revenue that runs through wholesale partners.</p>
+    </div>
+
+    <div class="card"><h3>Lifetime value build <span class="pill">per new member</span></h3>
+      ${tbl([
         ['Membership ARPU', [d0(y.arpu)]],
-        ['Membership gross margin', [p0(a.memGM)], 'muted'],
-        ['Membership gross profit per year', [d0(u.memGPyr)]],
-        ['Retention', [p0(a.retention)], 'muted'],
-        ['Implied average life', [u.life.toFixed(1)+' years'], 'muted'],
-        ['Discount rate', [p1(a.wacc)], 'muted'],
+        ['× membership gross margin at '+p0(a.memGM), [d0(u.memGPyr)], 'muted'],
+        ['Retention '+p0(a.retention)+', implied life '+u.life.toFixed(1)+' years', [''], 'muted'],
+        ['Discount factor over that life, at '+p1(a.wacc), [u.af.toFixed(2)+'x'], 'muted'],
         ['PV of membership gross profit', [d0(u.ltvMem)]],
-        ['Plus initial hardware gross profit', [d0(u.hwGPunit)]],
-        ['Plus repeat ring gross profit', [d0(u.repeatHW)]],
+        ['Repeat-ring gross profit per year', [d0(u.repeatYr)], 'muted'],
+        ['PV of repeat-ring gross profit', [d0(u.repeatHW)]],
+        ['Hardware gross profit on arrival', [d0(u.gpPerNM)]],
         ['Lifetime value', [d0(u.ltv)], 'tot'],
-        ['Less CAC', ['('+d0(u.cacBlend)+')']],
-        ['Net value per member', [d0(u.ltv-u.cacBlend)], 'tot'],
+        ['Less CAC', ['('+d0(u.cac)+')']],
+        ['Net value per member', [d0(u.ltv-u.cac)], 'tot'],
         ['LTV / CAC', [u.ltvCac.toFixed(1)+'x'], 'tot'],
       ])}
-      <p class="note">Membership gross profit is discounted at the WACC rather than a separate hurdle, so this ties to
-      the DCF. Repeat hardware is deliberately conservative: it credits the repeat rate observed today rather than the
-      full multi-generation upgrade cycle management describes.</p>
+      <p class="note">All three streams are discounted on the same annuity factor, at the WACC rather than a separate
+      hurdle, so this ties to the DCF. Repeat rings are derived from the model itself: ${u2(y.units*y.rep)} repeat rings
+      across ${u1(y.memAvg)} average members is ${d0(u.repeatYr)} of gross profit per member per year. At the default CAC this
+      ratio is deliberately conservative, because CAC is set at its ceiling.</p>
     </div>
 
     <div class="card"><h3>How much of this rests on retention</h3>
@@ -834,40 +913,32 @@ const OURA = {
         ['Lifetime value', retSens.map(s=>d0(s.ltv))],
         ['LTV / CAC', retSens.map(s=>s.ratio.toFixed(1)+'x'), 'tot'],
       ])}
-      <p class="note">Retention is the single most convex assumption in the model. Three points of retention move LTV by
-      roughly ${d0(Math.abs(retSens[3].ltv-retSens[2].ltv))} per member, and there are five million of them. Cohorts have improved
-      (81% in FY23 to 87% for the 9M FY25 cohort) but the blended book sits at ~85%.</p>
+      <p class="note">Retention is the most convex assumption in the model. Three points move LTV by roughly
+      ${d0(Math.abs(retSens[3].ltv-retSens[2].ltv))} per member, and there are five million of them. Cohorts have improved from
+      81% in FY23 to 87% for the 9M FY25 cohort, but the blended book sits at ~85%.</p>
     </div>
 
-    <div class="card"><h3>Why this structure is unusual</h3>
-      ${tbl([
-        ['', ['Oura','Typical consumer subscription'], 'hd'],
-        ['CAC recovered at', [u.dayOne>=0?'point of sale':'month '+payMonths, 'month 6 to 18']],
-        ['Working capital', ['negative, customers fund growth', 'positive']],
-        ['Gross margin on the annuity', [p0(a.memGM), '70% to 85%']],
-        ['Churn trigger', ['ring loss, damage, upgrade lapse', 'card failure, disengagement']],
-        ['Second revenue event', ['repeat ring, '+p0(y.rep)+' of units', 'none']],
-      ])}
-      <p class="note">The hardware sale is not a loss leader, which is what separates Oura from the connected-fitness
-      model that Peloton ran. It is also what makes the business look cheaper than it is on a revenue multiple:
-      ${p0(y.hw/y.rev)} of FY26E revenue is a low-margin, non-recurring hardware line.</p>
-    </div>
-
-    <div class="disclaimer">CAC, hardware gross margin and lifetime value are not disclosed in the S-1 and are derived here.
-    The share of S&M that is genuinely member acquisition is an input with no disclosed anchor, so treat the LTV/CAC
-    ratio as directional. Disclosed inputs: RPU $311 (9M FY26), membership gross margin 89%, retention ~85%,
-    organic acquisition ~40%, conversion over 94%, repeat share 11%.</div>`;
+    <div class="disclaimer">CAC is not disclosed anywhere in the S-1: it appears eight times, always as narrative, never
+    as a figure or a defined metric. The default here sets it equal to hardware gross profit, which is the most the
+    company's own "recovers customer acquisition costs on day one" language can permit, so it is a ceiling rather than
+    an estimate. Hardware gross margin is derived by taking total gross profit less membership revenue at the disclosed
+    89% membership margin. Disclosed inputs: RPU $311 (9M FY26), membership gross margin 89%, retention ~85%, organic
+    acquisition ~40%, activation-to-paid conversion over 94%, repeat share 11%.</div>`;
   }, takeaways(r,a){ const u=r.unit; return [
-    `<b>The day-one payback claim holds, on the blended number.</b> ${d0(u.hwGPunit)} of hardware gross profit against
-     ${d0(u.cacBlend)} of blended CAC leaves ${d0(u.dayOne)} before a single membership dollar.`,
-    `<b>On paid-acquired members it is much tighter.</b> Stripping out the ${p0(a.organic)} who arrive organically, implied CAC
-     is ${d0(u.cacPaid)} and the surplus falls to ${d0(u.hwGPunit-u.cacPaid)}. Word of mouth is doing real financial work here.`,
-    `<b>LTV/CAC of ${u.ltvCac.toFixed(1)}x is strong but retention-levered.</b> Most of the value sits in years three to seven of
-     membership, which no cohort has yet completed.`,
-    `<b>Negative working capital is a genuine asset.</b> Operating cash flow was ${mm(r.BS.cfo9m)} in 9M FY26 against net income
-     of ${mm(r.H.n9m26.ni)}. Deferred revenue, accruals and customer deposits fund the growth.`,
-    `<b>The lever nobody has pulled: price.</b> Membership has been $5.99 a month since 2021 while the feature set has
-     compounded. A ten percent rise flows almost entirely to gross profit.`,
+    `<b>CAC is anchored, not assumed.</b> The S-1 never quantifies it, so the default sets it equal to the
+     ${d0(u.gpPerNM)} of hardware gross profit a new member arrives with. Day one is zero by construction, which is the
+     most conservative reading of the company's own claim.`,
+    `<b>That ceiling is not reachable.</b> It would need ${p0(u.smShare)} of the entire S&M line spent on acquisition. Even
+     if every S&M dollar were acquisition, CAC could only be ${d0(u.cacSmCap)}, so the real day-one contribution is positive
+     and the claim has genuine headroom.`,
+    `<b>The claim that needs no assumption at all is the aggregate one.</b> Hardware gross profit covers the whole S&M line
+     at ${u.coverage[2].x.toFixed(2)}x in 9M FY26, and did in every prior period. That is almost certainly what the sentence means.`,
+    `<b>On paid-acquired members it is much tighter.</b> Working back from the S&M line at a plausible 75% acquisition
+     share, blended CAC is ${d0((r.y26.sm*0.75)/r.y26.newM)} but the members Oura actually buys cost
+     ${d0((r.y26.sm*0.75)/r.y26.newM/(1-a.organic))} against ${d0(u.gpPerNM)} of gross profit. The referral engine is doing real
+     financial work, not just marketing copy.`,
+    `<b>LTV/CAC of ${u.ltvCac.toFixed(1)}x is a floor, not a target</b>, since CAC sits at its ceiling. Most of the value is in years
+     three to seven of membership, which no cohort has yet completed.`,
   ];}},
 
   /* ============================== 3. FINANCIALS ============================== */
