@@ -598,9 +598,11 @@ const OURA = {
 
     /* ---- unit economics ---- */
     const hwGPunit = y26.rpu*y26.hwGM;
-    const cacBlend = (y26.sm*a.smAcqShare)/y26.newM;
+    const takeRate = y26.newM/y26.units;                 // rings that end up as a paid subscription
+    const cacBlend = (y26.sm*a.smAcqShare)/y26.units;    // per RING sold, matching hardware gross profit
     const cacPaid  = a.organic<1 ? cacBlend/(1-a.organic) : cacBlend;
-    const memGPyr  = y26.arpu*a.memGM;
+    const arpuRing = y26.arpu*takeRate;                  // membership ARPU earned per ring sold
+    const memGPyr  = arpuRing*a.memGM;
     const life     = 1/(1-a.retention);
     let ltvMem=0; for(let t=0;t<25;t++){ ltvMem += memGPyr*Math.pow(a.retention,t)/Math.pow(1+a.wacc,t+0.5); }
     const repeatHW = hwGPunit*(a.repeat26/(1-a.repeat26))*Math.min(life,8)/8*1.0;
@@ -611,7 +613,7 @@ const OURA = {
     return {yrs, labels, y26, y27, y29, yT, N, q4, dcf, dcfLo, dcfHi, sens, wRange, gRange, hist,
             comps, compStats, ouraLtm, regG, regR, impliedG, impliedR, evGrowthAdj, evR40,
             field, fieldLo, fieldHi, fieldMid,
-            unit:{hwGPunit, cacBlend, cacPaid, memGPyr, life, ltvMem, repeatHW, ltv, ltvCac, dayOne},
+            unit:{hwGPunit, takeRate, arpuRing, cacBlend, cacPaid, memGPyr, life, ltvMem, repeatHW, ltv, ltvCac, dayOne},
             H, BS, PRECEDENT};
   },
   /* ----------------------------------------------------------------- tabs */
@@ -773,7 +775,7 @@ const OURA = {
   {id:'unit', label:'Unit economics', render(r,a){
     const u=r.unit, y=r.y26;
     const retSens=[0.78,0.82,0.85,0.88,0.91].map(ret=>{
-      const gp=y.arpu*a.memGM; let lv=0; for(let t=0;t<25;t++) lv+=gp*Math.pow(ret,t)/Math.pow(1+a.wacc,t+0.5);
+      const gp=u.arpuRing*a.memGM; let lv=0; for(let t=0;t<25;t++) lv+=gp*Math.pow(ret,t)/Math.pow(1+a.wacc,t+0.5);
       const tot=lv+u.hwGPunit+u.repeatHW; return {ret, ltv:tot, ratio:tot/u.cacBlend, life:1/(1-ret)};
     });
     const payMonths = u.dayOne>=0 ? 0 : Math.ceil(-u.dayOne/(u.memGPyr/12));
@@ -786,7 +788,7 @@ const OURA = {
 
     ${kpiRow([
       ['Hardware GP per ring', d0(u.hwGPunit), d0(y.rpu)+' RPU at '+p0(y.hwGM)+' margin'],
-      ['Blended CAC', d0(u.cacBlend), p0(a.smAcqShare)+' of S&M over new members'],
+      ['Blended CAC per ring', d0(u.cacBlend), p0(a.smAcqShare)+' of S&M over rings sold'],
       ['Day-one surplus', (u.dayOne>=0?'+':'')+d0(u.dayOne), u.dayOne>=0?'CAC recovered at the till':'payback in ~'+payMonths+' months'],
       ['LTV / CAC', u.ltvCac.toFixed(1)+'x', d0(u.ltv)+' LTV, '+u.life.toFixed(1)+'yr life'],
     ])}
@@ -800,15 +802,18 @@ const OURA = {
         ['Day-one contribution', [(u.dayOne>=0?'+':'')+d0(u.dayOne)], 'tot'],
       ])}
       <p class="note">CAC is derived, not disclosed. Total S&M of ${mm(y.sm)} in FY26E, of which ${p0(a.smAcqShare)} is treated
-      as member acquisition, spread over ${u2(y.newM)} new members. On the ${p0(1-a.organic)} of members who are actually
-      bought rather than referred, the implied cost is ${d0(u.cacPaid)} each, and the day-one surplus on that subset is
-      ${(u.hwGPunit-u.cacPaid>=0?'+':'')+d0(u.hwGPunit-u.cacPaid)}. That is the number to stress, not the blended one.</p>
+      as member acquisition, spread over ${u2(y.units)} rings sold. Spreading it over rings rather than new members keeps
+      both sides of the subtraction on the same denominator, since the gross profit above is per ring. On the
+      ${p0(1-a.organic)} that are actually bought rather than referred, the implied cost is ${d0(u.cacPaid)} a ring, and the day-one
+      surplus on that subset is ${(u.hwGPunit-u.cacPaid>=0?'+':'')+d0(u.hwGPunit-u.cacPaid)}. That is the number to stress, not the blended one.</p>
     </div>
 
     <div class="card"><h3>Lifetime value build</h3>
       ${tbl([
-        ['', ['Per member'], 'hd'],
-        ['Membership ARPU', [d0(y.arpu)]],
+        ['', ['Per ring sold'], 'hd'],
+        ['Membership ARPU, per paying member', [d0(y.arpu)]],
+        ['Ring to subscription take rate', [p1(u.takeRate)], 'muted'],
+        ['Membership ARPU per ring sold', [d0(u.arpuRing)]],
         ['Membership gross margin', [p0(a.memGM)], 'muted'],
         ['Membership gross profit per year', [d0(u.memGPyr)]],
         ['Retention', [p0(a.retention)], 'muted'],
@@ -819,12 +824,15 @@ const OURA = {
         ['Plus repeat ring gross profit', [d0(u.repeatHW)]],
         ['Lifetime value', [d0(u.ltv)], 'tot'],
         ['Less CAC', ['('+d0(u.cacBlend)+')']],
-        ['Net value per member', [d0(u.ltv-u.cacBlend)], 'tot'],
+        ['Net value per ring', [d0(u.ltv-u.cacBlend)], 'tot'],
         ['LTV / CAC', [u.ltvCac.toFixed(1)+'x'], 'tot'],
       ])}
-      <p class="note">Membership gross profit is discounted at the WACC rather than a separate hurdle, so this ties to
-      the DCF. Repeat hardware is deliberately conservative: it credits the repeat rate observed today rather than the
-      full multi-generation upgrade cycle management describes.</p>
+      <p class="note">Everything is per ring sold, so it sits on the same denominator as the CAC above. Only
+      ${p1(u.takeRate)} of rings end up as a new paid subscription: ${p0(y.rep)} go to members who already have one, and roughly
+      ${p0(1-a.convRate)} of the rest never activate and convert. Membership ARPU is scaled by that take rate rather than credited
+      to every ring. Gross profit is discounted at the WACC rather than a separate hurdle, so this ties to the DCF.
+      Repeat hardware is deliberately conservative: it credits the repeat rate observed today rather than the full
+      multi-generation upgrade cycle management describes.</p>
     </div>
 
     <div class="card"><h3>How much of this rests on retention</h3>
@@ -835,7 +843,7 @@ const OURA = {
         ['LTV / CAC', retSens.map(s=>s.ratio.toFixed(1)+'x'), 'tot'],
       ])}
       <p class="note">Retention is the single most convex assumption in the model. Three points of retention move LTV by
-      roughly ${d0(Math.abs(retSens[3].ltv-retSens[2].ltv))} per member, and there are five million of them. Cohorts have improved
+      roughly ${d0(Math.abs(retSens[3].ltv-retSens[2].ltv))} per ring sold, across ${u1(y.units)} rings a year. Cohorts have improved
       (81% in FY23 to 87% for the 9M FY25 cohort) but the blended book sits at ~85%.</p>
     </div>
 
@@ -854,16 +862,18 @@ const OURA = {
     </div>
 
     <div class="disclaimer">CAC, hardware gross margin and lifetime value are not disclosed in the S-1 and are derived here.
+    Everything on this tab is stated per ring sold, so the gross profit and the acquisition cost share a denominator.
     The share of S&M that is genuinely member acquisition is an input with no disclosed anchor, so treat the LTV/CAC
     ratio as directional. Disclosed inputs: RPU $311 (9M FY26), membership gross margin 89%, retention ~85%,
     organic acquisition ~40%, conversion over 94%, repeat share 11%.</div>`;
   }, takeaways(r,a){ const u=r.unit; return [
     `<b>The day-one payback claim holds, on the blended number.</b> ${d0(u.hwGPunit)} of hardware gross profit against
      ${d0(u.cacBlend)} of blended CAC leaves ${d0(u.dayOne)} before a single membership dollar.`,
-    `<b>On paid-acquired members it is much tighter.</b> Stripping out the ${p0(a.organic)} who arrive organically, implied CAC
+    `<b>On paid-acquired rings it is much tighter.</b> Stripping out the ${p0(a.organic)} who arrive organically, implied CAC
      is ${d0(u.cacPaid)} and the surplus falls to ${d0(u.hwGPunit-u.cacPaid)}. Word of mouth is doing real financial work here.`,
-    `<b>LTV/CAC of ${u.ltvCac.toFixed(1)}x is strong but retention-levered.</b> Most of the value sits in years three to seven of
-     membership, which no cohort has yet completed.`,
+    `<b>LTV/CAC of ${u.ltvCac.toFixed(1)}x is strong but retention-levered.</b> Only ${p1(u.takeRate)} of rings become a paying
+     subscription, so membership ARPU is credited at that rate rather than to every ring. Most of the value sits in years
+     three to seven of membership, which no cohort has yet completed.`,
     `<b>Negative working capital is a genuine asset.</b> Operating cash flow was ${mm(r.BS.cfo9m)} in 9M FY26 against net income
      of ${mm(r.H.n9m26.ni)}. Deferred revenue, accruals and customer deposits fund the growth.`,
     `<b>The lever nobody has pulled: price.</b> Membership has been $5.99 a month since 2021 while the feature set has
