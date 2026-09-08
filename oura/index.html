@@ -610,10 +610,19 @@ const OURA = {
     const ltvCac   = ltv/cacBlend;
     const dayOne   = hwGPunit - cacBlend;
 
+    // 9M FY26 actuals, built from the filing: RPU and rings sold are disclosed, hardware gross
+    // margin is backed out of disclosed gross profit less membership at its disclosed margin, and
+    // CAC uses the same S&M-share assumption as the forecast column so the two are comparable.
+    const aHwGM  = (H.n9m26.gp - H.n9m26.mem*a.memGM)/H.n9m26.hw;
+    const aGP    = H.n9m26.rpu*aHwGM;
+    const aCac   = (H.n9m26.sm*a.smAcqShare)/H.n9m26.units;
+    const act    = {rpu:H.n9m26.rpu, hwGM:aHwGM, gp:aGP, cac:aCac, dayOne:aGP-aCac,
+                    units:H.n9m26.units, sm:H.n9m26.sm};
+
     return {yrs, labels, y26, y27, y29, yT, N, q4, dcf, dcfLo, dcfHi, sens, wRange, gRange, hist,
             comps, compStats, ouraLtm, regG, regR, impliedG, impliedR, evGrowthAdj, evR40,
             field, fieldLo, fieldHi, fieldMid,
-            unit:{hwGPunit, takeRate, arpuRing, cacBlend, cacPaid, memGPyr, life, ltvMem, repeatHW, ltv, ltvCac, dayOne},
+            unit:{act, hwGPunit, takeRate, arpuRing, cacBlend, cacPaid, memGPyr, life, ltvMem, repeatHW, ltv, ltvCac, dayOne},
             H, BS, PRECEDENT};
   },
   /* ----------------------------------------------------------------- tabs */
@@ -793,19 +802,28 @@ const OURA = {
       ['LTV / CAC', u.ltvCac.toFixed(1)+'x', d0(u.ltv)+' LTV, '+u.life.toFixed(1)+'yr life'],
     ])}
 
-    <div class="card"><h3>The acquisition event <span class="pill">FY26E, per ring sold</span></h3>
+    <div class="card"><h3>The acquisition event <span class="pill act">per ring sold · A actual · E model</span></h3>
       ${tbl([
-        ['Revenue per ring (RPU)', [d0(y.rpu)]],
-        ['Cost of hardware', ['('+d0(y.rpu*(1-y.hwGM))+')'], 'muted'],
-        ['Hardware gross profit', [d0(u.hwGPunit)], 'tot'],
-        ['Customer acquisition cost', ['('+d0(u.cacBlend)+')']],
-        ['Day-one contribution', [(u.dayOne>=0?'+':'')+d0(u.dayOne)], 'tot'],
+        ['', ['9M FY26A','FY2026E'], 'hd'],
+        ['Rings sold', [u2(u.act.units), u2(y.units)], 'muted'],
+        ['Sales and marketing', [mm(u.act.sm), mm(y.sm)], 'muted'],
+        ['Revenue per ring (RPU)', [d0(u.act.rpu), d0(y.rpu)]],
+        ['Hardware gross margin', [p1(u.act.hwGM), p1(y.hwGM)], 'muted'],
+        ['Cost of hardware', ['('+d0(u.act.rpu*(1-u.act.hwGM))+')', '('+d0(y.rpu*(1-y.hwGM))+')'], 'muted'],
+        ['Hardware gross profit', [d0(u.act.gp), d0(u.hwGPunit)], 'tot'],
+        ['Customer acquisition cost', ['('+d0(u.act.cac)+')', '('+d0(u.cacBlend)+')']],
+        ['Day-one contribution', [(u.act.dayOne>=0?'+':'')+d0(u.act.dayOne), (u.dayOne>=0?'+':'')+d0(u.dayOne)], 'tot'],
       ])}
-      <p class="note">CAC is derived, not disclosed. Total S&M of ${mm(y.sm)} in FY26E, of which ${p0(a.smAcqShare)} is treated
-      as member acquisition, spread over ${u2(y.units)} rings sold. Spreading it over rings rather than new members keeps
-      both sides of the subtraction on the same denominator, since the gross profit above is per ring. On the
-      ${p0(1-a.organic)} that are actually bought rather than referred, the implied cost is ${d0(u.cacPaid)} a ring, and the day-one
-      surplus on that subset is ${(u.hwGPunit-u.cacPaid>=0?'+':'')+d0(u.hwGPunit-u.cacPaid)}. That is the number to stress, not the blended one.</p>
+      <p class="note">The actual column comes straight from the filing. Rings sold and RPU are disclosed for the nine
+      months to 30 June 2026; hardware gross margin is backed out of reported gross profit of ${mm1(r.H.n9m26.gp)} less membership
+      revenue at its disclosed ${p0(a.memGM)} margin. Only CAC is assumed, and it uses the same ${p0(a.smAcqShare)} S&amp;M share as the
+      forecast column, spread over rings sold, so the two are comparable.</p>
+      <p class="note">The estimate lands below the actual on both lines: RPU drifts from ${d0(u.act.rpu)} to ${d0(y.rpu)} on channel
+      and geographic mix, while CAC rises from ${d0(u.act.cac)} to ${d0(u.cacBlend)} because fiscal Q4 carries Ring 5 launch spend into a
+      seasonally light revenue quarter. Spreading acquisition cost over rings rather than new members keeps both sides of
+      the subtraction on the same denominator, since gross profit is per ring. On the ${p0(1-a.organic)} of rings actually bought
+      rather than referred, the implied FY26E cost is ${d0(u.cacPaid)} and the surplus falls to
+      ${(u.hwGPunit-u.cacPaid>=0?'+':'')+d0(u.hwGPunit-u.cacPaid)}. That is the number to stress, not the blended one.</p>
     </div>
 
     <div class="card"><h3>Lifetime value build</h3>
