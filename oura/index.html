@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Oura S-1 Model</title>
-<meta name="description" content="A driver-based model of Oura Inc. built from its September 2026 Form S-1: business drivers, unit economics, financials, DCF and comparables.">
+<meta name="description" content="A driver-based model of Oura Inc. built from its September 2026 Form S-1: business drivers, unit economics, warranty analysis, financials, DCF and comparables.">
 <meta property="og:title" content="Oura S-1 Model">
-<meta property="og:description" content="Driver-based model built from Oura's Form S-1. Business drivers, unit economics, financials, DCF and comparables. Every assumption editable.">
+<meta property="og:description" content="Driver-based model built from Oura's Form S-1. Business drivers, unit economics, warranty analysis, financials, DCF and comparables. Every assumption editable.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <style>
@@ -194,6 +194,7 @@ const p1  = v => (v*100).toFixed(1)+'%';
 const u1  = v => v.toFixed(1)+'M';
 const u2  = v => v.toFixed(2)+'M';
 const mult= v => (isFinite(v)&&v>0 ? v.toFixed(1) : 'nm')+'x';
+const dSg = v => (v<0?'-':'+')+'$'+Math.abs(Math.round(v)).toLocaleString();
 
 // ---------- wide tables scroll sideways with the label column pinned ----------
 const tbl = rows => '<div class="tscroll at-left">'+table(rows)+'</div>';
@@ -331,14 +332,14 @@ const OURA = {
 
   /* ---------------------------------------------------------------- inputs */
   groups:[
-    {label:'Rings sold & pricing', tabs:['drivers','unit','fins','dcf'], inputs:[
+    {label:'Rings sold & pricing', tabs:['drivers','unit','warranty','fins','dcf'], inputs:[
       {id:'units26',   label:'FY26E rings sold',            type:'int',  step:0.1, unit:'m units'},
       {id:'unitG27',   label:'FY27E unit growth',           type:'pct',  step:1},
       {id:'unitGterm', label:'FY35E unit growth (fade to)', type:'pct',  step:0.5},
       {id:'rpu26',     label:'FY26E revenue per ring',      type:'money',step:5,   unit:'$'},
       {id:'rpuDrift',  label:'RPU drift p.a.',              type:'pct',  step:0.5},
     ]},
-    {label:'Members & membership', tabs:['drivers','unit','fins','dcf'], inputs:[
+    {label:'Members & membership', tabs:['drivers','unit','warranty','fins','dcf'], inputs:[
       {id:'convRate',  label:'Ring → paid member conversion',type:'pct', step:1},
       {id:'repeat26',  label:'FY26E repeat share of rings',  type:'pct', step:1},
       {id:'repeatDrift',label:'Repeat share, p.p. p.a.',     type:'pct', step:0.25},
@@ -347,7 +348,7 @@ const OURA = {
       {id:'arpu26',    label:'FY26E membership ARPU',        type:'money',step:1,  unit:'$/yr'},
       {id:'arpuG',     label:'ARPU growth p.a.',             type:'pct', step:0.5},
     ]},
-    {label:'Margin engine', tabs:['unit','fins','dcf'], inputs:[
+    {label:'Margin engine', tabs:['unit','warranty','fins','dcf'], inputs:[
       {id:'hwGM26',    label:'FY26E hardware gross margin',  type:'pct', step:0.5},
       {id:'hwGMterm',  label:'FY35E hardware gross margin',  type:'pct', step:0.5},
       {id:'memGM',     label:'Membership gross margin',      type:'pct', step:0.5},
@@ -362,7 +363,7 @@ const OURA = {
       {id:'sbcFwd',    label:'FY27E SBC % of revenue',       type:'pct', step:0.5},
       {id:'sbcTerm',   label:'FY35E SBC % of revenue',       type:'pct', step:0.5},
     ]},
-    {label:'Cash flow & capital', tabs:['dcf','unit'], inputs:[
+    {label:'Cash flow & capital', tabs:['dcf','unit','warranty'], inputs:[
       {id:'taxRate',   label:'Normalised cash tax rate',     type:'pct', step:1},
       {id:'daPct',     label:'D&A % of revenue',             type:'pct', step:0.1},
       {id:'capexPct',  label:'Capex % of revenue',           type:'pct', step:0.1},
@@ -384,9 +385,14 @@ const OURA = {
       {id:'mEbLo',     label:'EV / FY29E EBITDA — low',      type:'int', step:1,   unit:'x'},
       {id:'mEbHi',     label:'EV / FY29E EBITDA — high',     type:'int', step:1,   unit:'x'},
     ]},
-    {label:'Acquisition efficiency', tabs:['unit'], inputs:[
+    {label:'Acquisition efficiency', tabs:['unit','warranty'], inputs:[
       {id:'smAcqShare',label:'S&M that is member acquisition',type:'pct',step:5},
       {id:'organic',   label:'Members acquired organically',  type:'pct',step:5},
+    ]},
+    {label:'Warranty replacement', tabs:['warranty'], inputs:[
+      {id:'warrYr',    label:'Ring fails in year',            type:'int', step:1, unit:'yr'},
+      {id:'warrLife',  label:'Membership horizon, replaced',  type:'int', step:1, unit:'yr'},
+      {id:'warrClaim', label:'Members who claim',             type:'pct', step:5},
     ]},
   ],
 
@@ -402,6 +408,7 @@ const OURA = {
     wacc:0.105, tgr:0.03, exitMult:16, ggWeight:0.5,
     mRevLo:7.5, mRevHi:13, mFwdLo:5.5, mFwdHi:9.5, mEbLo:22, mEbHi:34,
     smAcqShare:0.75, organic:0.40,
+    warrYr:2, warrLife:6, warrClaim:1.00,
   },
 
   presets:{
@@ -458,6 +465,9 @@ const OURA = {
     mEbHi:'Top of the range reflects the Masimo takeout at 26.6x EV/EBITDA plus a growth premium.',
     smAcqShare:'Not disclosed. S&M covers brand, retail support and channel programmes as well as member acquisition, so only part of it is true CAC. Flex this to test how hard the day-one payback claim really is.',
     organic:'S-1: approximately 40% of new members were acquired organically in 9M FY26 through word of mouth and the refer-a-friend programme.',
+    warrYr:'The year the ring fails and the member either claims or lapses. This is a hardware life, not a churn rate: inside it members are sticky at the same retention the model already uses, and at it they drop off together. The standard limited warranty runs one year in the US and two years in most other markets, and the paid Extend plan takes it to three or four, so year 2 is the edge of standard cover in Europe and the first year a US member has to have bought Extend.',
+    warrLife:'How far the membership runs once the replacement ring is in hand. This is the driver of the warranty build, in place of compounding retention forever: set the horizon and let the same 85% a year work inside it. A replacement that buys the same life as the original ring would sit at twice the failure year. Six years is deliberately generous, so the section is not quietly assuming the answer it wants.',
+    warrClaim:'Share of members still subscribed at the failure year who actually claim. Leave it at 100% to read the section as the single customer who claims, which is what it was built for. Drop it to a realistic claim rate to read the same table as a fleet-wide average. It scales the cost of the ring, not the membership.',
   },
   /* -------------------------------------------------------------- compute */
   compute(a){
@@ -610,6 +620,43 @@ const OURA = {
     const ltvCac   = ltv/cacBlend;
     const dayOne   = hwGPunit - cacBlend;
 
+    /* ---- warranty replacement, priced on a hardware-life curve rather than a geometric one ----
+       The build above compounds retention for 25 years, which quietly assumes one ring lasts that
+       long. It does not. Inside a ring's life members are sticky at the same rate; at hardware
+       failure they lapse together unless the ring is replaced. So both warranty columns run
+       retention a year to a hard horizon and stop, and the replacement is what moves the horizon
+       out. The same curve drives the membership PV and the number of rings that have to be paid
+       for, which is the part the geometric version was getting free. */
+    const wClaim   = Math.min(1, Math.max(0, a.warrClaim));
+    const ringCost = y26.rpu*(1-y26.hwGM);                       // COGS of the ring Oura ships back
+    const wFail    = Math.max(1, Math.round(a.warrYr));
+    const wHoriz   = Math.max(wFail, Math.round(a.warrLife));
+    const cliff = Hz => {                                        // retention a year to Hz, then zero
+      let pv=0, yrs=0;
+      for(let t=0;t<Hz;t++){ const sv=Math.pow(a.retention,t);
+        pv += memGPyr*sv/Math.pow(1+a.wacc,t+0.5); yrs += sv; }
+      const rep = hwGPunit*(a.repeat26/(1-a.repeat26))*Math.min(yrs,8)/8;
+      return {pv, yrs, rep};
+    };
+    const warrCalc = (fail, horizon) => {
+      const hz    = Math.max(fail, horizon);
+      const noRep = cliff(fail), wRep = cliff(hz);
+      const alive = Math.pow(a.retention, fail);                 // still paying when the ring dies
+      const cost  = ringCost*alive*wClaim/Math.pow(1+a.wacc, fail);
+      const ltvNo = noRep.pv + hwGPunit + noRep.rep;
+      const ltvRe = wRep.pv  + hwGPunit + wRep.rep - cost;
+      return {fail, horizon:hz, alive, cost, noRep, wRep, ltvNo, ltvRe,
+              ratioNo:ltvNo/cacBlend, ratioRe:ltvRe/cacBlend};
+    };
+    const breakEven = f => { const hurdle=warrCalc(f,f).ltvNo; let e=1;
+      for(; e<=30; e++) if(warrCalc(f, f+e).ltvRe >= hurdle) break;
+      return e>30 ? null : e; };
+    const warr = Object.assign(warrCalc(wFail, wHoriz), {beExtra:breakEven(wFail)});
+    // extra years the replacement has to buy before it pays for the ring, by failure year
+    const warrBE = [1,2,3,4,5].map(f=>{ const c=warrCalc(f,f);
+      return {fail:f, extra:breakEven(f), ltvNo:c.ltvNo, ratioNo:c.ratioNo, cost:c.cost,
+              alive:Math.pow(a.retention,f)}; });
+
     // 9M FY26 actuals, built from the filing: RPU and rings sold are disclosed, hardware gross
     // margin is backed out of disclosed gross profit less membership at its disclosed margin, and
     // CAC uses the same S&M-share assumption as the forecast column so the two are comparable.
@@ -622,7 +669,8 @@ const OURA = {
     return {yrs, labels, y26, y27, y29, yT, N, q4, dcf, dcfLo, dcfHi, sens, wRange, gRange, hist,
             comps, compStats, ouraLtm, regG, regR, impliedG, impliedR, evGrowthAdj, evR40,
             field, fieldLo, fieldHi, fieldMid,
-            unit:{act, hwGPunit, takeRate, arpuRing, cacBlend, cacPaid, memGPyr, life, ltvMem, repeatHW, ltv, ltvCac, dayOne},
+            unit:{act, hwGPunit, takeRate, arpuRing, cacBlend, cacPaid, memGPyr, life, ltvMem, repeatHW, ltv, ltvCac, dayOne,
+                  warr, warrBE, warrCalc, ringCost, wClaim},
             H, BS, PRECEDENT};
   },
   /* ----------------------------------------------------------------- tabs */
@@ -782,7 +830,7 @@ const OURA = {
   ];}},
   /* ============================== 2. UNIT ECONOMICS ============================== */
   {id:'unit', label:'Unit economics', render(r,a){
-    const u=r.unit, y=r.y26;
+    const u=r.unit, y=r.y26, w=r.unit.warr;
     const retSens=[0.78,0.82,0.85,0.88,0.91].map(ret=>{
       const gp=u.arpuRing*a.memGM; let lv=0; for(let t=0;t<25;t++) lv+=gp*Math.pow(ret,t)/Math.pow(1+a.wacc,t+0.5);
       const tot=lv+u.hwGPunit+u.repeatHW; return {ret, ltv:tot, ratio:tot/u.cacBlend, life:1/(1-ret)};
@@ -898,7 +946,125 @@ const OURA = {
      compounded. A ten percent rise flows almost entirely to gross profit.`,
   ];}},
 
-  /* ============================== 3. FINANCIALS ============================== */
+  /* ============================== 3. WARRANTY ANALYSIS ============================== */
+  {id:'warranty', label:'Warranty analysis', render(r,a){
+    const u=r.unit, y=r.y26, w=r.unit.warr;
+
+    return `
+    <h2 class="sec">What happens when the ring itself wears out</h2>
+    <p class="lede">The lifetime value build on the previous tab compounds retention for twenty-five years, which assumes
+    without saying so that one ring lasts twenty-five years. It does not. This tab puts a hardware life on the curve, prices
+    the replacement ring Oura ships when a member claims, and asks what the membership has to be worth for that to pay.</p>
+
+    ${kpiRow([
+      ['LTV / CAC, as built', u.ltvCac.toFixed(1)+'x', d0(u.ltv)+' LTV, no hardware limit'],
+      ['With a ring that dies', w.ratioNo.toFixed(1)+'x', 'lapses at year '+w.fail+', no replacement'],
+      ['Replacement at year '+w.fail, w.ratioRe.toFixed(1)+'x', d0(w.cost)+' ring, horizon year '+w.horizon],
+      ['Years it must buy to pay', w.beExtra===null?'30+':'+'+w.beExtra, 'against a '+w.noRep.yrs.toFixed(1)+'yr membership'],
+    ])}
+    <div class="card"><h3>The same build, when the ring itself has a life <span class="pill">per ring sold</span></h3>
+      ${tbl([
+        ['', ['Base build','Ring fails year '+w.fail,'Replaced at year '+w.fail], 'hd'],
+        ['Membership ARPU, per paying member', [d0(y.arpu), d0(y.arpu), d0(y.arpu)]],
+        ['Ring to subscription take rate', [p1(u.takeRate), p1(u.takeRate), p1(u.takeRate)], 'muted'],
+        ['Membership ARPU per ring sold', [d0(u.arpuRing), d0(u.arpuRing), d0(u.arpuRing)]],
+        ['Membership gross margin', [p0(a.memGM), p0(a.memGM), p0(a.memGM)], 'muted'],
+        ['Membership gross profit per year', [d0(u.memGPyr), d0(u.memGPyr), d0(u.memGPyr)]],
+        ['Year-on-year stickiness', [p0(a.retention), p0(a.retention), p0(a.retention)], 'muted'],
+        ['Hardware horizon', ['none assumed', 'year '+w.fail, 'year '+w.horizon], 'muted'],
+        ['Members still paying at failure', ['n/a', p0(w.alive), p0(w.alive)], 'muted'],
+        ['Implied average life', [u.life.toFixed(1)+' years', w.noRep.yrs.toFixed(1)+' years', w.wRep.yrs.toFixed(1)+' years'], 'muted'],
+        ['Discount rate', [p1(a.wacc), p1(a.wacc), p1(a.wacc)], 'muted'],
+        ['PV of membership gross profit', [d0(u.ltvMem), d0(w.noRep.pv), d0(w.wRep.pv)]],
+        ['Plus initial hardware gross profit', [d0(u.hwGPunit), d0(u.hwGPunit), d0(u.hwGPunit)]],
+        ['Plus repeat ring gross profit', [d0(u.repeatHW), d0(w.noRep.rep), d0(w.wRep.rep)]],
+        ['Less PV of replacement ring, at cost', ['n/a', 'n/a', '('+d0(w.cost)+')']],
+        ['Lifetime value', [d0(u.ltv), d0(w.ltvNo), d0(w.ltvRe)], 'tot'],
+        ['Less CAC', ['('+d0(u.cacBlend)+')', '('+d0(u.cacBlend)+')', '('+d0(u.cacBlend)+')']],
+        ['Net value per ring', [d0(u.ltv-u.cacBlend), d0(w.ltvNo-u.cacBlend), d0(w.ltvRe-u.cacBlend)], 'tot'],
+        ['LTV / CAC', [u.ltvCac.toFixed(1)+'x', w.ratioNo.toFixed(1)+'x', w.ratioRe.toFixed(1)+'x'], 'tot'],
+      ])}
+      <p class="note"><b>The curve is the whole point.</b> The base build compounds ${p0(a.retention)} retention for 25 years, which
+      assumes without saying so that one ring lasts 25 years. It does not. Inside a ring's life members are sticky at that same
+      ${p0(a.retention)} a year; at hardware failure they lapse together unless the ring is replaced. So the two warranty columns run
+      ${p0(a.retention)} a year to a hard horizon and stop. Life is set directly rather than falling out of retention, which is the
+      only way to price the ring honestly: the same curve decides how much membership is earned and how many rings have to be
+      paid for.</p>
+      <p class="note">That is what the earlier version got wrong, and it understated the ring. ${p0(w.alive)} of the cohort is still
+      paying when the ring dies in year ${w.fail}, and every one of them is holding hardware that is about to fail. Charging for one
+      replacement and then letting the same member run for two decades on it is not a conservative treatment, it is a free
+      hardware refresh. The middle column is the honest counterfactual: no replacement, the member lapses at year ${w.fail}, and
+      lifetime value is ${d0(w.ltvNo)} at ${w.ratioNo.toFixed(1)}x rather than ${d0(u.ltv)} at ${u.ltvCac.toFixed(1)}x. That gap is the base build's implicit free rings.</p>
+      <p class="note">Against that counterfactual the replacement costs ${d0(w.cost)} in present value, charged at hardware cost of
+      ${d0(u.ringCost)} rather than at price and paid on the ${p0(w.alive)} still there, and buys ${d0(w.wRep.pv-w.noRep.pv)} of extra membership gross profit
+      by carrying the horizon from year ${w.fail} to year ${w.horizon}. Net ${dSg(w.ltvRe-w.ltvNo)} on lifetime value, and LTV/CAC goes
+      ${w.ratioNo.toFixed(1)}x to ${w.ratioRe.toFixed(1)}x. It carries no revenue, adds no unit and triggers no new CAC, because the S-1 states Rings
+      Sold net of warranty replacements and no new customer was acquired.</p>
+      <p class="note">Two things still to hold against it. Reported hardware gross margin already absorbs the replacements Oura
+      makes today, so this charges an incremental claim on top of the run rate, and the ${p0(u.wClaim)} claim rate reads the section as
+      the single customer who claims rather than a fleet average. The paid Extend plan at $45 to $60 pre-funds part of the cost
+      and is not credited. And the repeat ring line is the paid version of the same mechanism, so at long horizons the two
+      overlap: some of those members would have bought their way past the failure rather than claimed.</p>
+    </div>
+
+    <div class="card"><h3>How much life the ring has to buy <span class="pill">LTV / CAC</span></h3>
+      ${tbl(( () => {
+        const fails=[1,2,3,4,5];
+        const rows=[
+          ['Ring fails in', fails.map(n=>'Year '+n), 'hd'],
+          ['Members still paying', u.warrBE.map(x=>p0(x.alive)), 'muted'],
+          ['PV of replacement ring', u.warrBE.map(x=>'('+d0(x.cost)+')'), 'muted'],
+          ['No replacement, member lapses', u.warrBE.map(x=>x.ratioNo.toFixed(1)+'x'), 'tot'],
+        ];
+        [1,2,3,4,6,8].forEach(e=>{
+          rows.push(['Replacement buys +'+e+(e===1?' year':' years'),
+                     fails.map(f=>u.warrCalc(f, f+e).ratioRe.toFixed(1)+'x')]);
+        });
+        rows.push(['Extra years needed to break even', u.warrBE.map(x=>x.extra===null?'never':'+'+x.extra), 'tot']);
+        return rows;
+      })())}
+      <p class="note"><b>The bottom row barely moves, and that is the finding.</b> A free ring has to buy about
+      ${w.beExtra===null?'more than thirty':w.beExtra} more years to pay for itself almost regardless of when the ring fails. The cost of the ring and the value
+      of the years it buys are scaled by exactly the same factor, the share of members still paying at that point discounted
+      back, so it cancels out of the comparison. Only the repeat ring line breaks the symmetry, and it moves the answer by at
+      most a year. When the ring dies changes how much is at stake, not whether the trade works.</p>
+      <p class="note">${w.beExtra===null?'':'That is a high bar: '}${w.beExtra===null?'':'roughly '+w.beExtra+' years of membership to earn back one ring. '}The arithmetic is not subtle. ${d0(u.ringCost)} of hardware cost against ${d0(u.memGPyr)} a year of
+      membership gross profit per ring sold, because only ${p1(u.takeRate)} of rings carry a subscription at all, is about three
+      years of the annuity to rebuild one ring before any discounting. Anything short of the break-even and honouring the
+      claim is value destroying on this cohort. The bolded row above is the hurdle each replacement has to beat, not the base
+      build's ${u.ltvCac.toFixed(1)}x. Everything holds retention, ARPU and CAC at base and moves only the hardware life.</p>
+      <p class="note">The obvious next question, and a bigger rebuild than this section: if a ring lasts ${w.fail} years then a member
+      who runs to year ${w.horizon} needs more than one replacement, and the base build charges for none of them. Priced properly that
+      is a recurring hardware cost inside the annuity rather than a single event, and it would pull the headline LTV down
+      rather than the warranty column.</p>
+    </div>
+
+
+    <div class="disclaimer">Nothing on this tab is disclosed. Oura quantifies neither a hardware life nor a warranty claim
+    rate, and reported hardware gross margin already absorbs the replacements it makes today, so this prices an incremental
+    claim on top of the run rate rather than the first one. The replacement ring is charged at the hardware cost implied by
+    RPU and hardware gross margin, and carries no revenue and no unit, because Rings Sold in the filing is stated net of
+    warranty replacements. Standard cover is one year in the US and two in most other markets; the paid Extend plan at $45
+    to $60 is not credited. Everything else is a driver already used elsewhere in the model.</div>`;
+  }, takeaways(r,a){ const u=r.unit, w=r.unit.warr; return [
+    `<b>The lifetime value build is getting its rings for free.</b> Compounding ${p0(a.retention)} retention for 25 years assumes one
+     ring lasts 25 years. Put any hardware horizon on it and LTV/CAC falls from ${u.ltvCac.toFixed(1)}x to ${w.ratioNo.toFixed(1)}x before a warranty
+     question is even asked. That, not the claim, is the finding on this tab.`,
+    `<b>Honouring the claim is close to free, and close to worthless.</b> ${d0(w.cost)} of ring in present value against
+     ${d0(w.wRep.pv-w.noRep.pv)} of extra membership gross profit, so LTV/CAC moves ${w.ratioNo.toFixed(1)}x to ${w.ratioRe.toFixed(1)}x. The decision barely registers
+     next to the question of how long a ring lasts in the first place.`,
+    `<b>A free replacement has to buy about ${w.beExtra===null?'thirty-plus':w.beExtra} more years, whatever year the ring fails in.</b> The cost of the ring
+     and the value of the years it buys are scaled by the same survival term, so it cancels. When the ring dies changes how
+     much is at stake, not whether the trade works.`,
+    `<b>${d0(u.ringCost)} of hardware against ${d0(u.memGPyr)} a year of annuity is the whole tension.</b> Membership is only ${d0(u.memGPyr)} of gross
+     profit a year per ring sold, because just ${p1(u.takeRate)} of rings carry a subscription. Roughly three years of the annuity
+     to rebuild one ring, before discounting.`,
+    `<b>The number this tab does not fix.</b> If a ring lasts ${w.fail} years, a member who runs to year ${w.horizon} needs more than one
+     replacement, and the build on the previous tab charges for none of them. Priced properly that is a recurring hardware
+     cost inside the annuity, and it pulls the headline ${d0(u.ltv)} down rather than the warranty column.`,
+  ];}},
+
+  /* ============================== 4. FINANCIALS ============================== */
   {id:'fins', label:'Financials', render(r,a){
     const h=r.H, y=r.yrs, q=r.q4;
     const pick=[0,1,2,3,4,9].map(i=>y[i]);
@@ -1045,7 +1211,7 @@ const OURA = {
     `<b>Fiscal Q4 is the weak quarter.</b> Q4 FY25 lost ${mm1(Math.abs(q.pyEbit))} at the operating line. Any read of FY26E has to
      carry that seasonality, not annualise the nine months.`,
   ];}},
-  /* ============================== 4. DCF ============================== */
+  /* ============================== 5. DCF ============================== */
   {id:'dcf', label:'DCF', render(r,a){
     const y=r.yrs, d=r.dcf, fc=y.slice(1);
     const fcfLbls=fc.map(x=>x.lbl.replace('FY20','FY'));
@@ -1169,7 +1335,7 @@ const OURA = {
      DexCom (23x) do today, ten years out and growing at ${p0(r.yT.revG)}.`,
   ];}},
 
-  /* ============================== 5. VALUATION ============================== */
+  /* ============================== 6. VALUATION ============================== */
   {id:'val', label:'Valuation', render(r,a){
     const c=r.comps, cs=r.compStats, o=r.ouraLtm;
     const psOf = ev => (ev-a.netDebt)/a.shares;
