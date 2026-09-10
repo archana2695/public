@@ -308,6 +308,16 @@ H.ttm = {lbl:'LTM Jun-26',
   sbc:H.fy25.sbc+H.n9m26.sbc-H.n9m25.sbc, adjE:H.fy25.adjE+H.n9m26.adjE-H.n9m25.adjE,
   capex:H.fy25.capex+H.n9m26.capex-H.n9m25.capex, wcSrc:H.fy25.wcSrc+H.n9m26.wcSrc-H.n9m25.wcSrc,
   units:3.6, memEnd:5.0, rpu:null, repeat:null};
+
+// ---- product warranty accrual, S-1 Note 10 / Note 11, Commitments and Contingencies ($m) ----
+// "Activity related to the Company's accrual for its estimated future product warranty obligation."
+// The provision is recorded in cost of revenue at the time hardware revenue is recognised, so it
+// already sits inside the hardware gross margin the rest of the model backs out.
+const WARR = {
+  fy24:  {lbl:'FY2024',  open:13.808, prov:12.572,  claims:9.700,  fx:0.785,  close:17.465},
+  fy25:  {lbl:'FY2025',  open:17.465, prov:103.334, claims:28.760, fx:6.281,  close:98.320},
+  n9m26: {lbl:'9M FY26', open:98.320, prov:113.170, claims:75.483, fx:-3.706, close:132.301},
+};
 H.ttm.gm = H.ttm.gp/H.ttm.rev;
 
 // balance-sheet / cash-flow anchors at 30 Jun 2026 ($M)
@@ -671,7 +681,7 @@ const OURA = {
             field, fieldLo, fieldHi, fieldMid,
             unit:{act, hwGPunit, takeRate, arpuRing, cacBlend, cacPaid, memGPyr, life, ltvMem, repeatHW, ltv, ltvCac, dayOne,
                   warr, warrBE, warrCalc, ringCost, wClaim},
-            H, BS, PRECEDENT};
+            H, BS, PRECEDENT, WARR};
   },
   /* ----------------------------------------------------------------- tabs */
   tabs:[
@@ -948,13 +958,14 @@ const OURA = {
 
   /* ============================== 3. WARRANTY ANALYSIS ============================== */
   {id:'warranty', label:'Warranty analysis', render(r,a){
-    const u=r.unit, y=r.y26, w=r.unit.warr;
+    const u=r.unit, y=r.y26, w=r.unit.warr, W=r.WARR;
 
     return `
     <h2 class="sec">What happens when the ring itself wears out</h2>
-    <p class="lede">The lifetime value build on the previous tab compounds retention for twenty-five years, which assumes
-    without saying so that one ring lasts twenty-five years. It does not. This tab puts a hardware life on the curve, prices
-    the replacement ring Oura ships when a member claims, and asks what the membership has to be worth for that to pay.</p>
+    <p class="lede">The lifetime value build on the unit economics tab compounds retention for twenty-five years, which is
+    the same as assuming one ring lasts twenty-five years. This tab puts a hardware life on that curve instead, prices the
+    replacement ring Oura ships when a member claims, and asks how much membership the ring has to buy to pay for itself.
+    The company's own warranty disclosure is the starting point.</p>
 
     ${kpiRow([
       ['LTV / CAC, as built', u.ltvCac.toFixed(1)+'x', d0(u.ltv)+' LTV, no hardware limit'],
@@ -962,6 +973,31 @@ const OURA = {
       ['Replacement at year '+w.fail, w.ratioRe.toFixed(1)+'x', d0(w.cost)+' ring, horizon year '+w.horizon],
       ['Years it must buy to pay', w.beExtra===null?'30+':'+'+w.beExtra, 'against a '+w.noRep.yrs.toFixed(1)+'yr membership'],
     ])}
+    <div class="card"><h3>What the filing discloses <span class="pill act">S-1 Note 11 · $m</span></h3>
+      ${tbl([
+        ['Product warranty accrual', ['FY2024','FY2025','9M FY26'], 'hd'],
+        ['Balance at beginning of period', [mm1(W.fy24.open), mm1(W.fy25.open), mm1(W.n9m26.open)], 'muted'],
+        ['Provision for warranty accrual', [mm1(W.fy24.prov), mm1(W.fy25.prov), mm1(W.n9m26.prov)]],
+        ['Warranty claims', ['('+mm1(W.fy24.claims)+')', '('+mm1(W.fy25.claims)+')', '('+mm1(W.n9m26.claims)+')']],
+        ['Reporting currency translation', [W.fy24.fx,W.fy25.fx,W.n9m26.fx].map(v=>v<0?'('+mm1(-v)+')':mm1(v)), 'muted'],
+        ['Balance at end of period', [mm1(W.fy24.close), mm1(W.fy25.close), mm1(W.n9m26.close)], 'tot'],
+        ['Provision, % of hardware revenue', [p1(W.fy24.prov/r.H.fy24.hw), p1(W.fy25.prov/r.H.fy25.hw), p1(W.n9m26.prov/r.H.n9m26.hw)], 'muted'],
+        ['Provision per ring sold', [d0(W.fy24.prov/r.H.fy24.units), d0(W.fy25.prov/r.H.fy25.units), d0(W.n9m26.prov/r.H.n9m26.units)]],
+        ['Claims paid per ring sold', [d0(W.fy24.claims/r.H.fy24.units), d0(W.fy25.claims/r.H.fy25.units), d0(W.n9m26.claims/r.H.n9m26.units)]],
+      ])}
+      <p class="note">The top five lines are the accrual rollforward as filed. The three below are that table divided by
+      hardware revenue and by Rings Sold, both disclosed, to put it on the same per-ring basis as the rest of this tab.</p>
+      <p class="note">The provision is recorded in cost of revenue at the point hardware revenue is recognised, so it already
+      sits inside the ${p0(y.hwGM)} hardware gross margin every other number here is built on. It moved from
+      ${p1(W.fy24.prov/r.H.fy24.hw)} of hardware revenue in FY2024 to ${p1(W.fy25.prov/r.H.fy25.hw)} in FY2025. The filing names the cause in its risk
+      factors: defects "including issues relating to battery performance" that "have in the past" led to warranty claims and
+      product replacements.</p>
+      <p class="note">Two definitions from the filing matter for what follows. Rings Sold is "presented net of returns,
+      warranty replacements, and certain web sales exchanges", so a replacement is not a unit and carries no revenue. And the
+      standard warranty runs "one or more years, subject to longer periods in certain customer contracts or local
+      jurisdictions", which is an assurance-type warranty rather than a separate performance obligation.</p>
+    </div>
+
     <div class="card"><h3>The same build, when the ring itself has a life <span class="pill">per ring sold</span></h3>
       ${tbl([
         ['', ['Base build','Ring fails year '+w.fail,'Replaced at year '+w.fail], 'hd'],
@@ -984,27 +1020,32 @@ const OURA = {
         ['Net value per ring', [d0(u.ltv-u.cacBlend), d0(w.ltvNo-u.cacBlend), d0(w.ltvRe-u.cacBlend)], 'tot'],
         ['LTV / CAC', [u.ltvCac.toFixed(1)+'x', w.ratioNo.toFixed(1)+'x', w.ratioRe.toFixed(1)+'x'], 'tot'],
       ])}
-      <p class="note"><b>The curve is the whole point.</b> The base build compounds ${p0(a.retention)} retention for 25 years, which
-      assumes without saying so that one ring lasts 25 years. It does not. Inside a ring's life members are sticky at that same
-      ${p0(a.retention)} a year; at hardware failure they lapse together unless the ring is replaced. So the two warranty columns run
-      ${p0(a.retention)} a year to a hard horizon and stop. Life is set directly rather than falling out of retention, which is the
-      only way to price the ring honestly: the same curve decides how much membership is earned and how many rings have to be
-      paid for.</p>
-      <p class="note">That is what the earlier version got wrong, and it understated the ring. ${p0(w.alive)} of the cohort is still
-      paying when the ring dies in year ${w.fail}, and every one of them is holding hardware that is about to fail. Charging for one
-      replacement and then letting the same member run for two decades on it is not a conservative treatment, it is a free
-      hardware refresh. The middle column is the honest counterfactual: no replacement, the member lapses at year ${w.fail}, and
-      lifetime value is ${d0(w.ltvNo)} at ${w.ratioNo.toFixed(1)}x rather than ${d0(u.ltv)} at ${u.ltvCac.toFixed(1)}x. That gap is the base build's implicit free rings.</p>
-      <p class="note">Against that counterfactual the replacement costs ${d0(w.cost)} in present value, charged at hardware cost of
-      ${d0(u.ringCost)} rather than at price and paid on the ${p0(w.alive)} still there, and buys ${d0(w.wRep.pv-w.noRep.pv)} of extra membership gross profit
-      by carrying the horizon from year ${w.fail} to year ${w.horizon}. Net ${dSg(w.ltvRe-w.ltvNo)} on lifetime value, and LTV/CAC goes
-      ${w.ratioNo.toFixed(1)}x to ${w.ratioRe.toFixed(1)}x. It carries no revenue, adds no unit and triggers no new CAC, because the S-1 states Rings
-      Sold net of warranty replacements and no new customer was acquired.</p>
-      <p class="note">Two things still to hold against it. Reported hardware gross margin already absorbs the replacements Oura
-      makes today, so this charges an incremental claim on top of the run rate, and the ${p0(u.wClaim)} claim rate reads the section as
-      the single customer who claims rather than a fleet average. The paid Extend plan at $45 to $60 pre-funds part of the cost
-      and is not credited. And the repeat ring line is the paid version of the same mechanism, so at long horizons the two
-      overlap: some of those members would have bought their way past the failure rather than claimed.</p>
+      <p class="note">Everything above the hardware horizon is a driver used elsewhere in this model. Membership ARPU of
+      ${d0(y.arpu)} is membership revenue over average paid members, which annualises to roughly $81 in 9M FY26 and $75 in FY25.
+      The ${p0(a.memGM)} membership gross margin is disclosed. The ${p1(u.takeRate)} take rate is ${p0(1-y.rep)} x ${p0(a.convRate)}: ${p0(y.rep)} of rings are
+      repeat purchases by members who already subscribe, and conversion is trimmed from the disclosed "over 94%" to
+      ${p0(a.convRate)} for the lag between shipment, which is when a ring counts as sold, and activation. Retention of ${p0(a.retention)} is the
+      disclosed weighted-average twelve-month paid member retention at 30 June 2026.</p>
+      <p class="note">The three columns differ only in what they assume about the ring. The first puts no limit on it and
+      compounds retention out to twenty-five years. The second and third give the ring a life: members are sticky at the same
+      ${p0(a.retention)} a year inside it, and at failure they lapse together unless the ring is replaced. Setting a horizon rather than
+      letting retention run is what makes the hardware cost and the membership it supports fall out of one curve instead of
+      two.</p>
+      <p class="note">The hardware horizon is the only input on this tab with no counterpart in the filing. Oura discloses no
+      expected product life. What it does disclose is a warranty running "one or more years", battery performance as a named
+      defect risk that has already produced claims, and the size of the resulting accrual in the table above. The failure mode
+      is a sealed cell that cannot be replaced, so a ring has a life whether or not the filing puts a number on it. Year ${w.fail}
+      is the edge of standard cover in most markets outside the US.</p>
+      <p class="note">The replacement is charged at ${d0(u.ringCost)}, the hardware cost implied by the model's own drivers:
+      ${d0(y.rpu)} of revenue per ring at a ${p0(y.hwGM)} hardware gross margin. RPU is disclosed at $311 for 9M FY26; the hardware margin is
+      backed out of reported gross profit of ${mm1(r.H.n9m26.gp)} less membership revenue at its disclosed ${p0(a.memGM)} margin. It carries no
+      revenue and adds no unit, on the Rings Sold definition above, and creates no acquisition cost because no customer is
+      acquired. It is paid only on the ${p0(w.alive)} still subscribed when the ring fails, and discounted at the ${p1(a.wacc)} WACC used in
+      the DCF.</p>
+      <p class="note">Two things sit outside this build by design. The provision above is already in cost of revenue at about
+      ${d0(WARR.n9m26.prov/r.H.n9m26.units)} a ring, so what is priced here is an incremental claim on top of that run rate rather than the first one. And
+      extended-warranty contracts are sold through a third-party provider with the revenue booked inside membership revenue,
+      so the paid Extend plan is already in the ${d0(y.arpu)} ARPU rather than missing from it.</p>
     </div>
 
     <div class="card"><h3>How much life the ring has to buy <span class="pill">LTV / CAC</span></h3>
@@ -1023,29 +1064,26 @@ const OURA = {
         rows.push(['Extra years needed to break even', u.warrBE.map(x=>x.extra===null?'never':'+'+x.extra), 'tot']);
         return rows;
       })())}
-      <p class="note"><b>The bottom row barely moves, and that is the finding.</b> A free ring has to buy about
-      ${w.beExtra===null?'more than thirty':w.beExtra} more years to pay for itself almost regardless of when the ring fails. The cost of the ring and the value
-      of the years it buys are scaled by exactly the same factor, the share of members still paying at that point discounted
-      back, so it cancels out of the comparison. Only the repeat ring line breaks the symmetry, and it moves the answer by at
-      most a year. When the ring dies changes how much is at stake, not whether the trade works.</p>
-      <p class="note">${w.beExtra===null?'':'That is a high bar: '}${w.beExtra===null?'':'roughly '+w.beExtra+' years of membership to earn back one ring. '}The arithmetic is not subtle. ${d0(u.ringCost)} of hardware cost against ${d0(u.memGPyr)} a year of
-      membership gross profit per ring sold, because only ${p1(u.takeRate)} of rings carry a subscription at all, is about three
-      years of the annuity to rebuild one ring before any discounting. Anything short of the break-even and honouring the
-      claim is value destroying on this cohort. The bolded row above is the hurdle each replacement has to beat, not the base
-      build's ${u.ltvCac.toFixed(1)}x. Everything holds retention, ARPU and CAC at base and moves only the hardware life.</p>
-      <p class="note">The obvious next question, and a bigger rebuild than this section: if a ring lasts ${w.fail} years then a member
-      who runs to year ${w.horizon} needs more than one replacement, and the base build charges for none of them. Priced properly that
-      is a recurring hardware cost inside the annuity rather than a single event, and it would pull the headline LTV down
-      rather than the warranty column.</p>
+      <p class="note">Every cell holds ARPU, retention, membership gross margin, CAC and the discount rate at the values in
+      the rail and moves only the hardware life. The bolded row is the same build with no replacement, where the member lapses
+      when the ring fails; each row beneath it gives the replacement a different number of years to buy. The two rows above
+      show what is being paid for and to whom: the share of the cohort still subscribed at that point, and the present value
+      of one ring at ${d0(u.ringCost)} of hardware cost.</p>
+      <p class="note">The bottom row is solved rather than read off the grid. It is the number of extra years at which the
+      replacement column's lifetime value equals the no-replacement row, so it can fall between the rows shown, and it is
+      recomputed whenever any driver in the rail changes.</p>
+      <p class="note">The claim rate is set to ${p0(u.wClaim)}, which reads this as the customer who claims rather than a cohort
+      average. For scale on what a cohort rate would look like, the filing shows ${mm1(WARR.n9m26.claims)} of warranty claims paid in the nine
+      months to 30 June 2026 against ${u1(r.H.n9m26.units)} rings sold, or ${d0(WARR.n9m26.claims/r.H.n9m26.units)} a ring across the whole book.</p>
     </div>
 
 
-    <div class="disclaimer">Nothing on this tab is disclosed. Oura quantifies neither a hardware life nor a warranty claim
-    rate, and reported hardware gross margin already absorbs the replacements it makes today, so this prices an incremental
-    claim on top of the run rate rather than the first one. The replacement ring is charged at the hardware cost implied by
-    RPU and hardware gross margin, and carries no revenue and no unit, because Rings Sold in the filing is stated net of
-    warranty replacements. Standard cover is one year in the US and two in most other markets; the paid Extend plan at $45
-    to $60 is not credited. Everything else is a driver already used elsewhere in the model.</div>`;
+    <div class="disclaimer">The warranty accrual, the Rings Sold definition, the warranty term and the battery risk factor
+    are disclosed and are quoted above. The hardware horizon, the claim rate and the customer acquisition cost are not:
+    Oura gives no expected product life, no claim rate and no CAC figure anywhere in the filing. Hardware gross margin and
+    lifetime value are derived rather than disclosed. Because the warranty provision already sits in cost of revenue, the
+    replacement priced here is an incremental claim on top of the existing run rate. Every other driver on this tab is the
+    one used on the unit economics and DCF tabs.</div>`;
   }, takeaways(r,a){ const u=r.unit, w=r.unit.warr; return [
     `<b>The lifetime value build is getting its rings for free.</b> Compounding ${p0(a.retention)} retention for 25 years assumes one
      ring lasts 25 years. Put any hardware horizon on it and LTV/CAC falls from ${u.ltvCac.toFixed(1)}x to ${w.ratioNo.toFixed(1)}x before a warranty
